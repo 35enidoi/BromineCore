@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+version = "0.1"
+name = "brominecore"
+dependencies = [
+    "websockets",
+]
+requires-python = ">= 3.9"
+authors = [
+    {name = "iodine53"},
+]
+maintainers = [
+    {name = "iodine53"},
+]
+description = "Misskey websocketAPI wrapper."
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {text = "MIT License"}
+keywords = ["misskey"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+
+    "License :: OSI Approved :: MIT License",
+
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11"
+]
+
+[project.urls]
+Repository = "https://github.com/35enidoi/BromineCore"
+Issues = "https://github.com/35enidoi/BromineCore/issues"

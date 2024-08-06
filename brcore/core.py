@@ -157,25 +157,37 @@ class Bromine:
             except (
                 asyncio.exceptions.TimeoutError,
                 websockets.exceptions.ConnectionClosed,
-                websockets.exceptions.ConnectionClosedError,
-                websockets.exceptions.ConnectionClosedOK,
             ) as e:
                 # websocketが死んだりタイムアウトした時の処理
-                self.__log(f"error occured:{e}")
-                connect_fail_count += 1
+                self.__log(f"error occured: {e}")
                 await asyncio.sleep(self.__COOL_TIME)
                 if connect_fail_count > 5:
                     # Todo: 例外を投げる？
                     # 5回以上連続で失敗したとき長く寝るようにする
                     # とりあえず30待つようにする
                     await asyncio.sleep(30)
+                continue
+
+            except websockets.exceptions.InvalidStatusCode as e:
+                # ステータスコードが変な時
+                self.__log(f"error occured: Invalid Status Code [{e.status_code}]")
+                if e.status_code // 100 == 4:
+                    # 400番台
+                    raise e
+                else:
+                    await asyncio.sleep(self.__COOL_TIME)
+                    if connect_fail_count > 5:
+                        # Todo: 上のタイムアウトと同様
+                        await asyncio.sleep(30)
+                    continue
 
             except Exception as e:
                 # 予定外のエラー発生時。
-                self.__log(f"fatal Error:{type(e)}, args:{e.args}")
+                self.__log(f"fatal Error: {type(e)}, args: {e.args}")
                 raise e
 
             finally:
+                connect_fail_count += 1  # ここが処理されるのは何か例外が起きたときなので
                 # 再接続する際、いろいろ初期化する
                 if type(wsd) is asyncio.Task:
                     # __ws_send_dを止める

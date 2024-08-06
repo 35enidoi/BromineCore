@@ -161,8 +161,8 @@ class Bromine:
                 websockets.exceptions.ConnectionClosedOK,
             ) as e:
                 # websocketが死んだりタイムアウトした時の処理
-                self.__log(f"error occured:{e}")
                 connect_fail_count += 1
+                self.__log(f"error occured: {e}")
                 await asyncio.sleep(self.__COOL_TIME)
                 if connect_fail_count > 5:
                     # Todo: 例外を投げる？
@@ -172,7 +172,7 @@ class Bromine:
 
             except Exception as e:
                 # 予定外のエラー発生時。
-                self.__log(f"fatal Error:{type(e)}, args:{e.args}")
+                self.__log(f"fatal Error: {type(e)}, args: {e.args}")
                 raise e
 
             finally:

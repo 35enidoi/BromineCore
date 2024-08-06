@@ -157,8 +157,6 @@ class Bromine:
             except (
                 asyncio.exceptions.TimeoutError,
                 websockets.exceptions.ConnectionClosed,
-                websockets.exceptions.ConnectionClosedError,
-                websockets.exceptions.ConnectionClosedOK,
             ) as e:
                 # websocketが死んだりタイムアウトした時の処理
                 connect_fail_count += 1
@@ -169,6 +167,7 @@ class Bromine:
                     # 5回以上連続で失敗したとき長く寝るようにする
                     # とりあえず30待つようにする
                     await asyncio.sleep(30)
+                continue
 
             except Exception as e:
                 # 予定外のエラー発生時。

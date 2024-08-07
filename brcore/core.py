@@ -230,6 +230,8 @@ class Bromine:
         ------
         TypeError
             非同期関数funcがcoroutinefunctionでない時
+        ValueError
+            idがすでに予約済みの場合
 
         Note
         ----
@@ -237,8 +239,12 @@ class Bromine:
         if id is None:
             # もしIDがない時生成する
             id = uuid.uuid4()
+        else:
+            if id not in self.__on_comebacks.keys():
+                raise ValueError("idがすでに予約済みです。")
         if not asyncio.iscoroutinefunction(func):
             raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
+
         self.__on_comebacks[id] = (block, func)
         return id
 
@@ -304,8 +310,16 @@ class Bromine:
         type: str
             type情報
         body: dict[str, Any]
-            body情報"""
-        self.__send_queue.put_nowait((type, body))
+            body情報
+
+        Raises
+        ------
+        RuntimeError
+            メイン関数が実行されていない時に使った場合"""
+        if self.__is_running:
+            self.__send_queue.put_nowait((type, body))
+        else:
+            raise RuntimeError("メイン関数が実行されていません")
 
     def ws_connect(self,
                    channel: str,
@@ -334,6 +348,8 @@ class Bromine:
         -------
         TypeError
             非同期関数funcがcoroutinefunctionでない時
+        ValueError
+            idがすでに予約済みの場合
 
         Note
         ----
@@ -343,6 +359,10 @@ class Bromine:
         if id is None:
             # idがなかったら自動生成
             id = str(uuid.uuid4())
+        else:
+            if id in self.__channels.keys():
+                raise ValueError("idがすでに予約済みです。")
+
         # channelsに追加
         self.__channels[id] = (channel, func, params)
         body = {
@@ -350,6 +370,7 @@ class Bromine:
             "id": id,
             "params": params
         }
+
         if self.__is_running:
             # もしsend_queueがある時(実行中の時)
             self.ws_send("connect", body)
@@ -357,6 +378,7 @@ class Bromine:
         else:
             # ない時(実行前)
             self.__log(f"connect channel before run: {channel}, id: {id}")
+
         return id
 
     def ws_disconnect(self, id: str) -> None:
@@ -372,6 +394,9 @@ class Bromine:
         KeyError
             識別idが不適のとき"""
         channel = self.__channels.pop(id)[0]
-        body = {"id": id}
-        self.ws_send("disconnect", body)
+
+        if self.__is_running:
+            body = {"id": id}
+            self.ws_send("disconnect", body)
+
         self.__log(f"disconnect channel: {channel}, id: {id}")

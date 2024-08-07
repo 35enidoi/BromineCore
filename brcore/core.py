@@ -228,7 +228,7 @@ class Bromine:
 
         Raises
         ------
-        ValueError
+        TypeError
             非同期関数funcがcoroutinefunctionでない時
 
         Note
@@ -238,7 +238,7 @@ class Bromine:
             # もしIDがない時生成する
             id = uuid.uuid4()
         if not asyncio.iscoroutinefunction(func):
-            raise ValueError("非同期関数funcがcoroutinefunctionではありません。")
+            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
         self.__on_comebacks[id] = (block, func)
         return id
 
@@ -332,14 +332,14 @@ class Bromine:
 
         Raises
         -------
-        ValueError
+        TypeError
             非同期関数funcがcoroutinefunctionでない時
 
         Note
         ----
         返り値の識別idはws_disconnectで使用します"""
         if not asyncio.iscoroutinefunction(func):
-            raise ValueError("非同期関数funcがcoroutinefunctionではありません。")
+            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
         if id is None:
             # idがなかったら自動生成
             id = str(uuid.uuid4())

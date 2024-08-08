@@ -240,7 +240,7 @@ class Bromine:
             # もしIDがない時生成する
             id = uuid.uuid4()
         else:
-            if id not in self.__on_comebacks.keys():
+            if id not in self.__on_comebacks:
                 raise ValueError("idがすでに予約済みです。")
         if not asyncio.iscoroutinefunction(func):
             raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
@@ -360,7 +360,7 @@ class Bromine:
             # idがなかったら自動生成
             id = str(uuid.uuid4())
         else:
-            if id in self.__channels.keys():
+            if id in self.__channels:
                 raise ValueError("idがすでに予約済みです。")
 
         # channelsに追加

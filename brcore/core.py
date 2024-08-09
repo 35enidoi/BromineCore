@@ -42,6 +42,8 @@ class Bromine:
         self.__COOL_TIME = 5
 
         # 値を保持するキューとか
+        # noteid: awaitablefunc
+        self.__subnotes: dict[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]]] = {}
         # uuid:[channelname, awaitablefunc, params]
         self.__channels: dict[str, tuple[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]], dict[str, Any]]] = {}
         # uuid:tuple[isblock, awaitablefunc]
@@ -150,9 +152,14 @@ class Bromine:
                                     break
                             else:
                                 self.__log("data come from unknown channel")
+                        elif data["body"].get("id"):
+                            # bodyにidが含まれている時
+                            if data["body"]["id"] in self.__subnotes:
+                                # subNoteの処理
+                                background_tasks.add(asyncio.create_task(self.__subnotes[data["body"]["id"]](data["body"])))
                         else:
-                            # たまにchannel以外から来ることがある（謎）
-                            self.__log(f"data come from not channel, datatype[{data['type']}]")
+                            # たまに謎めいたものが来ることがある（謎）
+                            self.__log(f"data come from not expect, datatype[{data['type']}]")
 
             except (
                 asyncio.exceptions.TimeoutError,
@@ -264,8 +271,9 @@ class Bromine:
 
     async def __ws_send_d(self, ws: websockets.WebSocketClientProtocol) -> NoReturn:
         """websocketを送るdaemon"""
-        # すでに接続済みのchannelにconnectしたりしないようにするやつ
+        # すでに接続済みの物に送らないようにしたりしないようにするやつ
         already_connected_ids: set[str] = set()
+        already_subscribe_notes: set[str] = set()
         # まずはchannelsの再接続から始める
         for i, v in self.__channels.items():
             already_connected_ids.add(i)
@@ -278,6 +286,13 @@ class Bromine:
                 }
             }))
 
+        # ノートのキャプチャ
+        for noteid in self.__subnotes.keys():
+            already_subscribe_notes.add(noteid)
+            await ws.send(json.dumps({
+                "type": "subNote",
+                "body": {"id": noteid}
+            }))
         # queueの初期化
         while not self.__send_queue.empty():
             type_, body_ = await self.__send_queue.get()
@@ -288,6 +303,12 @@ class Bromine:
                 else:
                     # 追加する
                     already_connected_ids.add(body_["id"])
+
+            elif type_ == "subNote":
+                if body_["id"] in already_subscribe_notes:
+                    continue  # connectと同様
+                else:
+                    already_subscribe_notes.add(body_["id"])
 
             await ws.send(json.dumps({
                 "type": type_,
@@ -400,3 +421,48 @@ class Bromine:
             self.ws_send("disconnect", body)
 
         self.__log(f"disconnect channel: {channel}, id: {id}")
+
+    def ws_subnote(self, noteid: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
+        """投稿をキャプチャする関数
+
+        Parameters
+        ----------
+        noteid: str
+            キャプチャするノートID
+        func: CoroutineFunction
+
+        Raises
+        ------
+        TypeError
+            非同期関数funcがcoroutinefunctionでない時
+        ValueError
+            もうすでにキャプチャしている時"""
+        if not asyncio.iscoroutinefunction(func):
+            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
+        if noteid in self.__subnotes:
+            raise ValueError("すでにキャプチャ済みです。")
+        self.__subnotes[noteid] = func
+        if self.__is_running:
+            body = {"id": noteid}
+            self.ws_send("subNote", body)
+        self.__log(f"subscribe note. id: {noteid}")
+
+    def ws_unsubnote(self, noteid: str) -> None:
+        """ノートのキャプチャを解除する関数
+
+        Parameters
+        ----------
+        noteid: str
+            キャプチャのを解除するノートID
+
+        Raises
+        ------
+        ValueError
+            ノートIDがまだキャプチャされていないものの時"""
+        if noteid not in self.__subnotes:
+            raise ValueError("キャプチャされていないノートのIDです。")
+        self.__subnotes.pop(noteid)
+        if self.__is_running:
+            body = {"id": noteid}
+            self.ws_send("unsubNote", body)
+        self.__log(f"unsubscribe note. id: {noteid}")

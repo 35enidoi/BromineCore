@@ -36,12 +36,19 @@ class Bromine:
     instance: str
         インスタンス名
     token: :obj:`str`, optional
-        トークン"""
+        トークン
+    secure_connect: bool, default True
+        セキュアな接続をするかどうか
 
-    def __init__(self, instance: str, token: Optional[str] = None) -> None:
+        これはローカルで構築したインスタンス等セキュアな接続が
+        不可能な場所で使うもので通常は切る必要がありません。"""
+
+    def __init__(self, instance: str, token: Optional[str] = None, *, secure_connect: bool = True) -> None:
         self.__COOL_TIME = 5
 
         # 値を保持するキューとか
+        # noteid: awaitablefunc
+        self.__subnotes: dict[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]]] = {}
         # uuid:[channelname, awaitablefunc, params]
         self.__channels: dict[str, tuple[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]], dict[str, Any]]] = {}
         # uuid:tuple[isblock, awaitablefunc]
@@ -51,13 +58,16 @@ class Bromine:
 
         # 実行中かどうかの変数
         self.__is_running: bool = False
+        # 謎の場所からくる情報受取関数
+        self.__expect_info_func: Optional[Callable[[dict[str, Any]], Coroutine[Any, Any, None]]] = None
 
         # websocketのURL
-        if token is not None:
-            self.__WS_URL = f'wss://{instance}/streaming?i={token}'
+        if secure_connect:
+            self.__WS_URL = f"wss://{instance}/streaming"
         else:
-            # トークンがないときはパラメーターを消しとく
-            self.__WS_URL = f'wss://{instance}/streaming'
+            self.__WS_URL = f"ws://{instance}/streaming"
+        if token is not None:
+            self.__WS_URL += f"?i={token}"
 
         # logger作成
         self.__logger = logging.getLogger("Bromine")
@@ -90,14 +100,26 @@ class Bromine:
         """メイン関数が実行中かどうか"""
         return self.__is_running
 
+    def _set_expect_info_func(self, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
+        if not asyncio.iscoroutinefunction(func):
+            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
+        self.__expect_info_func = func
+
+    def _del_expect_info_func(self) -> None:
+        self.__expect_info_func = None
+
+    expect_info_func = property(None, _set_expect_info_func, _del_expect_info_func, "謎の場所からくる情報を受け取る非同期関数")
+
     async def main(self) -> NoReturn:
-        """開始する関数"""
+        """処理を開始する関数"""
         self.__log("start main.")
+
+        self.__is_running = True
         # send_queueをinitで作るとattached to a different loopとかいうゴミでるのでここで宣言
         self.__send_queue = asyncio.Queue()
-        self.__is_running = True
         # バックグラウンドタスクの集合
         backgrounds = _BackgroundTasks()
+
         try:
             await asyncio.create_task(self.__runner(backgrounds))
         finally:
@@ -114,6 +136,7 @@ class Bromine:
         wsd: Union[None, asyncio.Task] = None
         # comebacks(asyncio.gather)
         comebacks: Union[None, asyncio.Future] = None
+
         while True:
             try:
                 async with websockets.connect(self.__WS_URL) as ws:
@@ -144,15 +167,19 @@ class Bromine:
                         # データ受け取り
                         data = json.loads(await ws.recv())
                         if data['type'] == 'channel':
-                            for i, v in self.__channels.items():
-                                if data["body"]["id"] == i:
-                                    background_tasks.add(asyncio.create_task(v[1](data["body"])))
-                                    break
-                            else:
-                                self.__log("data come from unknown channel")
+                            if data["body"]["id"] in self.__channels:
+                                background_tasks.add(asyncio.create_task(self.__channels[data["body"]["id"]][1](data["body"])))
+
+                        elif data["type"] == "noteUpdated":  # Todo:subNoteって絶対noteUpdatedで送られてくるか？
+                            # bodyにidが含まれている時
+                            if data["body"]["id"] in self.__subnotes:
+                                # subNoteの処理
+                                background_tasks.add(asyncio.create_task(self.__subnotes[data["body"]["id"]](data["body"])))
+
                         else:
-                            # たまにchannel以外から来ることがある（謎）
-                            self.__log(f"data come from not channel, datatype[{data['type']}]")
+                            # たまに謎めいたものが来ることがある（謎）
+                            if self.__expect_info_func is not None:
+                                background_tasks.add(asyncio.create_task(self.__expect_info_func(data)))
 
             except (
                 asyncio.exceptions.TimeoutError,
@@ -166,7 +193,6 @@ class Bromine:
                     # 5回以上連続で失敗したとき長く寝るようにする
                     # とりあえず30待つようにする
                     await asyncio.sleep(30)
-                continue
 
             except websockets.exceptions.InvalidStatusCode as e:
                 # ステータスコードが変な時
@@ -179,7 +205,6 @@ class Bromine:
                     if connect_fail_count > 5:
                         # Todo: 上のタイムアウトと同様
                         await asyncio.sleep(30)
-                    continue
 
             except Exception as e:
                 # 予定外のエラー発生時。
@@ -216,7 +241,7 @@ class Bromine:
         ----------
         func: CoroutineFunction
             comeback時に実行する非同期関数
-        block: bool
+        block: bool, default False
             websocketとの交信をブロッキングして実行するか
         id: :obj:`str`, optional
             識別id、ない場合自動生成される
@@ -228,18 +253,29 @@ class Bromine:
 
         Raises
         ------
-        ValueError
+        TypeError
             非同期関数funcがcoroutinefunctionでない時
+        ValueError
+            idがすでに予約済みの場合
 
         Note
         ----
-        返り値の識別idはdel_comebackで使用します"""
+        返り値の識別idはdel_comebackで使用します
+
+        また、idの指定がない場合、uuid4で自動生成されます"""
         if id is None:
             # もしIDがない時生成する
             id = uuid.uuid4()
+        else:
+            if id in self.__on_comebacks:
+                raise ValueError("idがすでに予約済みです。")
         if not asyncio.iscoroutinefunction(func):
-            raise ValueError("非同期関数funcがcoroutinefunctionではありません。")
+            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
+
         self.__on_comebacks[id] = (block, func)
+
+        self.__log(f"addition comeback. id: {id}")
+
         return id
 
     def del_comeback(self, id: str) -> None:
@@ -252,14 +288,18 @@ class Bromine:
 
         Raises
         ------
-        KeyError
+        ValueError
             識別idが不適のとき"""
+        if id not in self.__on_comebacks:
+            raise ValueError("IDが不適です。")
         self.__on_comebacks.pop(id)
+        self.__log(f"delete comeback. id: {id}")
 
     async def __ws_send_d(self, ws: websockets.WebSocketClientProtocol) -> NoReturn:
         """websocketを送るdaemon"""
-        # すでに接続済みのchannelにconnectしたりしないようにするやつ
+        # すでに接続済みの物に送らないようにしたりしないようにするやつ
         already_connected_ids: set[str] = set()
+        already_subscribe_notes: set[str] = set()
         # まずはchannelsの再接続から始める
         for i, v in self.__channels.items():
             already_connected_ids.add(i)
@@ -272,6 +312,14 @@ class Bromine:
                 }
             }))
 
+        # ノートのキャプチャ
+        for noteid in self.__subnotes.keys():
+            already_subscribe_notes.add(noteid)
+            await ws.send(json.dumps({
+                "type": "subNote",
+                "body": {"id": noteid}
+            }))
+
         # queueの初期化
         while not self.__send_queue.empty():
             type_, body_ = await self.__send_queue.get()
@@ -282,6 +330,12 @@ class Bromine:
                 else:
                     # 追加する
                     already_connected_ids.add(body_["id"])
+
+            elif type_ == "subNote":
+                if body_["id"] in already_subscribe_notes:
+                    continue  # connectと同様
+                else:
+                    already_subscribe_notes.add(body_["id"])
 
             await ws.send(json.dumps({
                 "type": type_,
@@ -297,15 +351,23 @@ class Bromine:
             }))
 
     def ws_send(self, type: str, body: dict[str, Any]) -> None:
-        """ウェブソケットへ送るキューに情報を追加するやつ
+        """ウェブソケットへ情報を送る関数
 
         Parameters
         ----------
         type: str
             type情報
         body: dict[str, Any]
-            body情報"""
-        self.__send_queue.put_nowait((type, body))
+            body情報
+
+        Raises
+        ------
+        RuntimeError
+            メイン関数が実行されていない時に使った場合"""
+        if self.__is_running:
+            self.__send_queue.put_nowait((type, body))
+        else:
+            raise RuntimeError("メイン関数が実行されていません")
 
     def ws_connect(self,
                    channel: str,
@@ -332,31 +394,41 @@ class Bromine:
 
         Raises
         -------
-        ValueError
+        TypeError
             非同期関数funcがcoroutinefunctionでない時
+        ValueError
+            idがすでに予約済みの場合
 
         Note
         ----
-        返り値の識別idはws_disconnectで使用します"""
+        返り値の識別idはws_disconnectで使用します
+
+        また、idの指定がない場合、uuid4で自動生成されます"""
         if not asyncio.iscoroutinefunction(func):
-            raise ValueError("非同期関数funcがcoroutinefunctionではありません。")
+            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
         if id is None:
             # idがなかったら自動生成
             id = str(uuid.uuid4())
+        else:
+            if id in self.__channels:
+                raise ValueError("idがすでに予約済みです。")
+
         # channelsに追加
         self.__channels[id] = (channel, func, params)
-        body = {
-            "channel": channel,
-            "id": id,
-            "params": params
-        }
+
         if self.__is_running:
+            body = {
+                "channel": channel,
+                "id": id,
+                "params": params
+            }
             # もしsend_queueがある時(実行中の時)
             self.ws_send("connect", body)
-            self.__log(f"connect channel: {channel}, id: {id}")
+            self.__log(f"connect channel. name: {channel}, id: {id}")
         else:
             # ない時(実行前)
-            self.__log(f"connect channel before run: {channel}, id: {id}")
+            self.__log(f"connect channel before run. name: {channel}, id: {id}")
+
         return id
 
     def ws_disconnect(self, id: str) -> None:
@@ -369,9 +441,63 @@ class Bromine:
 
         Raises
         ------
-        KeyError
+        ValueError
             識別idが不適のとき"""
+        if id not in self.__channels:
+            raise ValueError("IDが不適です。")
         channel = self.__channels.pop(id)[0]
-        body = {"id": id}
-        self.ws_send("disconnect", body)
-        self.__log(f"disconnect channel: {channel}, id: {id}")
+
+        if self.__is_running:
+            body = {"id": id}
+            self.ws_send("disconnect", body)
+
+        self.__log(f"disconnect channel. name: {channel}, id: {id}")
+
+    def ws_subnote(self, noteid: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
+        """投稿をキャプチャする関数
+
+        Parameters
+        ----------
+        noteid: str
+            キャプチャするノートID
+        func: CoroutineFunction
+
+        Raises
+        ------
+        TypeError
+            非同期関数funcがcoroutinefunctionでない時
+        ValueError
+            もうすでにキャプチャしている時"""
+        if not asyncio.iscoroutinefunction(func):
+            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
+        if noteid in self.__subnotes:
+            raise ValueError("すでにキャプチャ済みです。")
+        self.__subnotes[noteid] = func
+
+        if self.__is_running:
+            body = {"id": noteid}
+            self.ws_send("subNote", body)
+
+        self.__log(f"subscribe note. id: {noteid}")
+
+    def ws_unsubnote(self, noteid: str) -> None:
+        """ノートのキャプチャを解除する関数
+
+        Parameters
+        ----------
+        noteid: str
+            キャプチャのを解除するノートID
+
+        Raises
+        ------
+        ValueError
+            ノートIDがまだキャプチャされていないものの時"""
+        if noteid not in self.__subnotes:
+            raise ValueError("IDが不適です。")
+        self.__subnotes.pop(noteid)
+
+        if self.__is_running:
+            body = {"id": noteid}
+            self.ws_send("unsubNote", body)
+
+        self.__log(f"unsubscribe note. id: {noteid}")

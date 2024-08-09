@@ -114,9 +114,9 @@ class Bromine:
         """開始する関数"""
         self.__log("start main.")
 
+        self.__is_running = True
         # send_queueをinitで作るとattached to a different loopとかいうゴミでるのでここで宣言
         self.__send_queue = asyncio.Queue()
-        self.__is_running = True
         # バックグラウンドタスクの集合
         backgrounds = _BackgroundTasks()
 

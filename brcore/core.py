@@ -401,13 +401,14 @@ class Bromine:
 
         # channelsに追加
         self.__channels[id] = (channel, func, params)
-        body = {
-            "channel": channel,
-            "id": id,
-            "params": params
-        }
 
         if self.__is_running:
+            body = {
+                "channel": channel,
+                "id": id,
+                "params": params
+            }
+
             # もしsend_queueがある時(実行中の時)
             self.ws_send("connect", body)
             self.__log(f"connect channel: {channel}, id: {id}")

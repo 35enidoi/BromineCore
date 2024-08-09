@@ -53,6 +53,8 @@ class Bromine:
 
         # 実行中かどうかの変数
         self.__is_running: bool = False
+        # 謎の場所からくる情報受取関数
+        self.__expect_info_func: Optional[Callable[[dict[str, Any]], Coroutine[Any, Any, None]]] = None
 
         # websocketのURL
         if token is not None:
@@ -91,6 +93,16 @@ class Bromine:
     def is_running(self) -> bool:
         """メイン関数が実行中かどうか"""
         return self.__is_running
+
+    def _set_expect_info_func(self, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
+        if not asyncio.iscoroutinefunction(func):
+            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
+        self.__expect_info_func = func
+
+    def _del_expect_info_func(self) -> None:
+        self.__expect_info_func = None
+
+    expect_info_func = property(None, _set_expect_info_func, _del_expect_info_func, "謎の場所からくる情報を受け取る非同期関数")
 
     async def main(self) -> NoReturn:
         """開始する関数"""
@@ -162,7 +174,8 @@ class Bromine:
                                 background_tasks.add(asyncio.create_task(self.__subnotes[data["body"]["id"]](data["body"])))
                         else:
                             # たまに謎めいたものが来ることがある（謎）
-                            self.__log(f"data come from not expect, datatype[{data['type']}]")
+                            if self.__expect_info_func is not None:
+                                background_tasks.add(asyncio.create_task(self.__expect_info_func(data)))
 
             except (
                 asyncio.exceptions.TimeoutError,

@@ -38,7 +38,7 @@ class Bromine:
     token: :obj:`str`, optional
         トークン
     secure_connect: bool, default True
-        セキュアな接続(wss)をするかどうか
+        セキュアな接続をするかどうか
 
         これはローカルで構築したインスタンス等セキュアな接続が
         不可能な場所で使うもので通常は切る必要がありません。"""
@@ -111,7 +111,7 @@ class Bromine:
     expect_info_func = property(None, _set_expect_info_func, _del_expect_info_func, "謎の場所からくる情報を受け取る非同期関数")
 
     async def main(self) -> NoReturn:
-        """開始する関数"""
+        """処理を開始する関数"""
         self.__log("start main.")
 
         self.__is_running = True
@@ -241,7 +241,7 @@ class Bromine:
         ----------
         func: CoroutineFunction
             comeback時に実行する非同期関数
-        block: bool
+        block: bool, default False
             websocketとの交信をブロッキングして実行するか
         id: :obj:`str`, optional
             識別id、ない場合自動生成される
@@ -260,7 +260,9 @@ class Bromine:
 
         Note
         ----
-        返り値の識別idはdel_comebackで使用します"""
+        返り値の識別idはdel_comebackで使用します
+
+        また、idの指定がない場合、uuid4で自動生成されます"""
         if id is None:
             # もしIDがない時生成する
             id = uuid.uuid4()
@@ -349,7 +351,7 @@ class Bromine:
             }))
 
     def ws_send(self, type: str, body: dict[str, Any]) -> None:
-        """ウェブソケットへ送るキューに情報を追加するやつ
+        """ウェブソケットへ情報を送る関数
 
         Parameters
         ----------
@@ -399,7 +401,9 @@ class Bromine:
 
         Note
         ----
-        返り値の識別idはws_disconnectで使用します"""
+        返り値の識別idはws_disconnectで使用します
+
+        また、idの指定がない場合、uuid4で自動生成されます"""
         if not asyncio.iscoroutinefunction(func):
             raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
         if id is None:

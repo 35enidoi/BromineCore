@@ -161,17 +161,15 @@ class Bromine:
                         # データ受け取り
                         data = json.loads(await ws.recv())
                         if data['type'] == 'channel':
-                            for i, v in self.__channels.items():
-                                if data["body"]["id"] == i:
-                                    background_tasks.add(asyncio.create_task(v[1](data["body"])))
-                                    break
-                            else:
-                                self.__log("data come from unknown channel")
-                        elif data["body"].get("id"):
+                            if data["body"]["id"] in self.__channels:
+                                background_tasks.add(asyncio.create_task(self.__channels[data["body"]["id"]][1](data["body"])))
+
+                        elif data["type"] == "noteUpdated":  # Todo:subNoteって絶対noteUpdatedで送られてくるか？
                             # bodyにidが含まれている時
                             if data["body"]["id"] in self.__subnotes:
                                 # subNoteの処理
                                 background_tasks.add(asyncio.create_task(self.__subnotes[data["body"]["id"]](data["body"])))
+
                         else:
                             # たまに謎めいたものが来ることがある（謎）
                             if self.__expect_info_func is not None:

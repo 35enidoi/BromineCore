@@ -187,7 +187,6 @@ class Bromine:
                     # 5回以上連続で失敗したとき長く寝るようにする
                     # とりあえず30待つようにする
                     await asyncio.sleep(30)
-                continue
 
             except websockets.exceptions.InvalidStatusCode as e:
                 # ステータスコードが変な時
@@ -200,7 +199,6 @@ class Bromine:
                     if connect_fail_count > 5:
                         # Todo: 上のタイムアウトと同様
                         await asyncio.sleep(30)
-                    continue
 
             except Exception as e:
                 # 予定外のエラー発生時。

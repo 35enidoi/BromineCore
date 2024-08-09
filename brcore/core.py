@@ -95,11 +95,13 @@ class Bromine:
     async def main(self) -> NoReturn:
         """開始する関数"""
         self.__log("start main.")
+
         # send_queueをinitで作るとattached to a different loopとかいうゴミでるのでここで宣言
         self.__send_queue = asyncio.Queue()
         self.__is_running = True
         # バックグラウンドタスクの集合
         backgrounds = _BackgroundTasks()
+
         try:
             await asyncio.create_task(self.__runner(backgrounds))
         finally:
@@ -116,6 +118,7 @@ class Bromine:
         wsd: Union[None, asyncio.Task] = None
         # comebacks(asyncio.gather)
         comebacks: Union[None, asyncio.Future] = None
+
         while True:
             try:
                 async with websockets.connect(self.__WS_URL) as ws:
@@ -295,6 +298,7 @@ class Bromine:
                 "type": "subNote",
                 "body": {"id": noteid}
             }))
+
         # queueの初期化
         while not self.__send_queue.empty():
             type_, body_ = await self.__send_queue.get()

@@ -265,8 +265,10 @@ class Bromine:
 
         Raises
         ------
-        KeyError
+        ValueError
             識別idが不適のとき"""
+        if id not in self.__on_comebacks:
+            raise ValueError("IDが不適です。")
         self.__on_comebacks.pop(id)
 
     async def __ws_send_d(self, ws: websockets.WebSocketClientProtocol) -> NoReturn:
@@ -412,8 +414,10 @@ class Bromine:
 
         Raises
         ------
-        KeyError
+        ValueError
             識別idが不適のとき"""
+        if id not in self.__channels:
+            raise ValueError("IDが不適です。")
         channel = self.__channels.pop(id)[0]
 
         if self.__is_running:
@@ -442,9 +446,11 @@ class Bromine:
         if noteid in self.__subnotes:
             raise ValueError("すでにキャプチャ済みです。")
         self.__subnotes[noteid] = func
+
         if self.__is_running:
             body = {"id": noteid}
             self.ws_send("subNote", body)
+
         self.__log(f"subscribe note. id: {noteid}")
 
     def ws_unsubnote(self, noteid: str) -> None:
@@ -460,9 +466,11 @@ class Bromine:
         ValueError
             ノートIDがまだキャプチャされていないものの時"""
         if noteid not in self.__subnotes:
-            raise ValueError("キャプチャされていないノートのIDです。")
+            raise ValueError("IDが不適です。")
         self.__subnotes.pop(noteid)
+
         if self.__is_running:
             body = {"id": noteid}
             self.ws_send("unsubNote", body)
+
         self.__log(f"unsubscribe note. id: {noteid}")

@@ -36,9 +36,14 @@ class Bromine:
     instance: str
         インスタンス名
     token: :obj:`str`, optional
-        トークン"""
+        トークン
+    secure_connect: bool, default True
+        セキュアな接続(wss)をするかどうか
 
-    def __init__(self, instance: str, token: Optional[str] = None) -> None:
+        これはローカルで構築したインスタンス等セキュアな接続が
+        不可能な場所で使うもので通常は切る必要がありません。"""
+
+    def __init__(self, instance: str, token: Optional[str] = None, *, secure_connect: bool = True) -> None:
         self.__COOL_TIME = 5
 
         # 値を保持するキューとか
@@ -57,11 +62,12 @@ class Bromine:
         self.__expect_info_func: Optional[Callable[[dict[str, Any]], Coroutine[Any, Any, None]]] = None
 
         # websocketのURL
-        if token is not None:
-            self.__WS_URL = f'wss://{instance}/streaming?i={token}'
+        if secure_connect:
+            self.__WS_URL = f"wss://{instance}/streaming"
         else:
-            # トークンがないときはパラメーターを消しとく
-            self.__WS_URL = f'wss://{instance}/streaming'
+            self.__WS_URL = f"ws://{instance}/streaming"
+        if token is not None:
+            self.__WS_URL += f"?i={token}"
 
         # logger作成
         self.__logger = logging.getLogger("Bromine")

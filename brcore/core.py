@@ -271,6 +271,9 @@ class Bromine:
             raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
 
         self.__on_comebacks[id] = (block, func)
+
+        self.__log(f"addition comeback. id: {id}")
+
         return id
 
     def del_comeback(self, id: str) -> None:
@@ -288,6 +291,7 @@ class Bromine:
         if id not in self.__on_comebacks:
             raise ValueError("IDが不適です。")
         self.__on_comebacks.pop(id)
+        self.__log(f"delete comeback. id: {id}")
 
     async def __ws_send_d(self, ws: websockets.WebSocketClientProtocol) -> NoReturn:
         """websocketを送るdaemon"""
@@ -414,13 +418,12 @@ class Bromine:
                 "id": id,
                 "params": params
             }
-
             # もしsend_queueがある時(実行中の時)
             self.ws_send("connect", body)
-            self.__log(f"connect channel: {channel}, id: {id}")
+            self.__log(f"connect channel. name: {channel}, id: {id}")
         else:
             # ない時(実行前)
-            self.__log(f"connect channel before run: {channel}, id: {id}")
+            self.__log(f"connect channel before run. name: {channel}, id: {id}")
 
         return id
 
@@ -444,7 +447,7 @@ class Bromine:
             body = {"id": id}
             self.ws_send("disconnect", body)
 
-        self.__log(f"disconnect channel: {channel}, id: {id}")
+        self.__log(f"disconnect channel. name: {channel}, id: {id}")
 
     def ws_subnote(self, noteid: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
         """投稿をキャプチャする関数

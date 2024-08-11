@@ -7,6 +7,8 @@ from typing import Any, Callable, NoReturn, Optional, Union, Coroutine
 
 import websockets
 
+from brcore.util import ExceptionTexts
+
 
 __all__ = ["Bromine"]
 
@@ -102,7 +104,7 @@ class Bromine:
 
     def _set_expect_info_func(self, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
         if not asyncio.iscoroutinefunction(func):
-            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
+            raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
         self.__expect_info_func = func
 
     def _del_expect_info_func(self) -> None:
@@ -268,9 +270,9 @@ class Bromine:
             id = uuid.uuid4()
         else:
             if id in self.__on_comebacks:
-                raise ValueError("idがすでに予約済みです。")
+                raise ValueError(ExceptionTexts.ID_ALREADY_RESERVED)
         if not asyncio.iscoroutinefunction(func):
-            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
+            raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
 
         self.__on_comebacks[id] = (block, func)
 
@@ -291,7 +293,7 @@ class Bromine:
         ValueError
             識別idが不適のとき"""
         if id not in self.__on_comebacks:
-            raise ValueError("IDが不適です。")
+            raise ValueError(ExceptionTexts.ID_INVALID)
         self.__on_comebacks.pop(id)
         self.__log(f"delete comeback. id: {id}")
 
@@ -367,7 +369,7 @@ class Bromine:
         if self.__is_running:
             self.__send_queue.put_nowait((type, body))
         else:
-            raise RuntimeError("メイン関数が実行されていません")
+            raise RuntimeError(ExceptionTexts.MAIN_FUNC_NOT_RUNNING)
 
     def ws_connect(self,
                    channel: str,
@@ -405,13 +407,13 @@ class Bromine:
 
         また、idの指定がない場合、uuid4で自動生成されます"""
         if not asyncio.iscoroutinefunction(func):
-            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
+            raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
         if id is None:
             # idがなかったら自動生成
             id = str(uuid.uuid4())
         else:
             if id in self.__channels:
-                raise ValueError("idがすでに予約済みです。")
+                raise ValueError(ExceptionTexts.ID_ALREADY_RESERVED)
 
         # channelsに追加
         self.__channels[id] = (channel, func, params)
@@ -444,7 +446,7 @@ class Bromine:
         ValueError
             識別idが不適のとき"""
         if id not in self.__channels:
-            raise ValueError("IDが不適です。")
+            raise ValueError(ExceptionTexts.ID_INVALID)
         channel = self.__channels.pop(id)[0]
 
         if self.__is_running:
@@ -469,9 +471,9 @@ class Bromine:
         ValueError
             もうすでにキャプチャしている時"""
         if not asyncio.iscoroutinefunction(func):
-            raise TypeError("非同期関数funcがcoroutinefunctionではありません。")
+            raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
         if noteid in self.__subnotes:
-            raise ValueError("すでにキャプチャ済みです。")
+            raise ValueError(ExceptionTexts.ID_ALREADY_RESERVED)
         self.__subnotes[noteid] = func
 
         if self.__is_running:
@@ -493,7 +495,7 @@ class Bromine:
         ValueError
             ノートIDがまだキャプチャされていないものの時"""
         if noteid not in self.__subnotes:
-            raise ValueError("IDが不適です。")
+            raise ValueError(ExceptionTexts.ID_INVALID)
         self.__subnotes.pop(noteid)
 
         if self.__is_running:

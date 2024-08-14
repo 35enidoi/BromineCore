@@ -2,7 +2,7 @@ import json
 import asyncio
 import uuid
 import logging
-from functools import partial, wraps
+from functools import partial
 from typing import Any, Callable, NoReturn, Optional, Union, Coroutine
 
 import websockets
@@ -509,7 +509,6 @@ class Bromine:
         if not isinstance(channel, str):
             raise TypeError(ExceptionTexts.DECO_ARG_NOT_STR)
 
-        @wraps()
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
             self.ws_connect(channel=channel, func=func)
             return func
@@ -521,7 +520,6 @@ class Bromine:
         if not isinstance(noteid, str):
             raise TypeError(ExceptionTexts.DECO_ARG_NOT_STR)
 
-        @wraps()
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
             self.ws_subnote(noteid=noteid, func=func)
             return func
@@ -530,7 +528,6 @@ class Bromine:
 
     def add_comeback_deco(self):
         """add_comebackのデコレーター版"""
-        @wraps()
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
             self.add_comeback(func=func)
             return func

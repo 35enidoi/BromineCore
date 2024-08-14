@@ -509,7 +509,7 @@ class Bromine:
         if not isinstance(channel, str):
             raise TypeError(ExceptionTexts.DECO_ARG_NOT_STR)
 
-        @wraps
+        @wraps()
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
             self.ws_connect(channel=channel, func=func)
             return func
@@ -521,7 +521,7 @@ class Bromine:
         if not isinstance(noteid, str):
             raise TypeError(ExceptionTexts.DECO_ARG_NOT_STR)
 
-        @wraps
+        @wraps()
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
             self.ws_subnote(noteid=noteid, func=func)
             return func
@@ -530,7 +530,7 @@ class Bromine:
 
     def add_comeback_deco(self):
         """add_comebackのデコレーター版"""
-        @wraps
+        @wraps()
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
             self.add_comeback(func=func)
             return func

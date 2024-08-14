@@ -1,7 +1,7 @@
-from enum import StrEnum
+from typing import NamedTuple
 
 
-class ExceptionTexts(StrEnum):
+class ExceptionTexts(NamedTuple):
     ID_ALREADY_RESERVED = "IDがすでに予約済みです。"
     ID_INVALID = "IDが不適です。"
 

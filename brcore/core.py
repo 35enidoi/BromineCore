@@ -283,8 +283,8 @@ class Bromine:
     def del_comeback(self, id: str) -> None:
         """comeback消すやつ
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         id: str
             識別id
 

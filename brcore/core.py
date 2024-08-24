@@ -95,7 +95,9 @@ class Bromine:
 
     @property
     def expect_info_func(self) -> Union[Callable[[dict[str, Any]], Coroutine[Any, Any, None]], None]:
-        """謎の場所からくる情報を受け取る非同期関数"""
+        """謎の場所からくる情報を受け取る非同期関数
+
+        普通は特に設定しなくてもよい"""
         return self.__expect_info_func
 
     @expect_info_func.setter
@@ -311,6 +313,8 @@ class Bromine:
     def add_ws_recconect(self, type: str, id: str, body: dict[str, Any]) -> None:
         """接続しなおした時に再接続(情報を送る)する物を追加する
 
+        これは低レベルAPIなので普通は触らなくても大丈夫です。
+
         Parameters
         ----------
         type: str
@@ -338,6 +342,8 @@ class Bromine:
     def del_ws_recconect(self, type: str, id: str) -> None:
         """接続しなおした時に再接続(情報を送る)する物を削除する
 
+        これは低レベルAPIなので普通は触らなくても大丈夫です。
+
         Parameters
         ----------
         type: str
@@ -356,6 +362,8 @@ class Bromine:
 
     def add_ws_type_id(self, type: str, id: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
         """websocketの情報を振り分ける辞書に追加する
+
+        これは低レベルAPIなので普通は触らなくても大丈夫です。
 
         Parameters
         ----------
@@ -393,6 +401,8 @@ class Bromine:
     def del_ws_type_id(self, type: str, id: str) -> None:
         """websocketの情報を振り分ける辞書から削除する
 
+        これは低レベルAPIなので普通は触らなくても大丈夫です。
+
         Parameters
         ----------
         type: str
@@ -413,6 +423,8 @@ class Bromine:
 
     def ws_send(self, type: str, body: dict[str, Any]) -> None:
         """ウェブソケットへ情報を送る関数
+
+        これは低レベルAPIなので普通は触らなくても大丈夫です。
 
         Parameters
         ----------
@@ -554,7 +566,12 @@ class Bromine:
         self.__log(f"unsubscribe note. id: {noteid}")
 
     def ws_connect_deco(self, channel: str):
-        """ws_connectのデコレーター版"""
+        """ws_connectのデコレーター版
+
+        Parameters
+        ----------
+        channel: str
+            チャンネル名"""
         if not isinstance(channel, str):
             raise TypeError(ExceptionTexts.DECO_ARG_NOT_STR)
 
@@ -565,7 +582,12 @@ class Bromine:
         return _wrap
 
     def ws_subnote_deco(self, noteid: str):
-        """ws_subnoteのデコレーター版"""
+        """ws_subnoteのデコレーター版
+
+        Parameters
+        ----------
+        noteid: str
+            ノートのid"""
         if not isinstance(noteid, str):
             raise TypeError(ExceptionTexts.DECO_ARG_NOT_STR)
 

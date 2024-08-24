@@ -142,9 +142,6 @@ class Bromine:
                     pong_latency = await ping_wait
                     self.__log(f"websocket connect success. latency: {pong_latency}s")
 
-                    # 送るdaemonの作成
-                    wsd = asyncio.create_task(self.__ws_send_d(ws))
-
                     # comebacksの処理
                     cmbs: list[Coroutine[Any, Any, None]] = []
                     for i in self.__on_comebacks.values():
@@ -157,6 +154,9 @@ class Bromine:
                     if cmbs != []:
                         # 全部一気にgatherで管理
                         comebacks = asyncio.gather(*cmbs, return_exceptions=True)
+
+                    # 送るdaemonの作成
+                    wsd = asyncio.create_task(self.__ws_send_d(ws))
 
                     # 接続に成功したということでfail_countを0に
                     connect_fail_count = 0

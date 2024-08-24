@@ -163,10 +163,10 @@ class Bromine:
                     while True:
                         # データ受け取り
                         data = json.loads(await ws.recv())
-                        if (type := data["type"]) in self.__ws_type_id_dict:
-                            if (id := data["body"]["id"]) in self.__ws_type_id_dict[type]:
-                                background_tasks.add(asyncio.create_task(self.__ws_type_id_dict[type][id](data["body"])))
-                            elif (wild_func := self.__ws_type_id_dict[type].get("ALLMATCH")):
+                        if (type_ := data["type"]) in self.__ws_type_id_dict:
+                            if (id := data["body"]["id"]) in self.__ws_type_id_dict[type_]:
+                                background_tasks.add(asyncio.create_task(self.__ws_type_id_dict[type_][id](data["body"])))
+                            elif (wild_func := self.__ws_type_id_dict[type_].get("ALLMATCH")):
                                 # ワイルドカードがある時
                                 background_tasks.add(asyncio.create_task(wild_func(data["body"])))
                             else:
@@ -210,7 +210,7 @@ class Bromine:
             finally:
                 connect_fail_count += 1  # ここが処理されるのは何か例外が起きたときなので
                 # 再接続する際、いろいろ初期化する
-                if type(wsd) is asyncio.Task:
+                if isinstance(wsd, asyncio.Task):
                     # __ws_send_dを止める
                     wsd.cancel()
                     try:

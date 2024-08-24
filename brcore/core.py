@@ -92,15 +92,20 @@ class Bromine:
         """メイン関数が実行中かどうか"""
         return self.__is_running
 
-    def _set_expect_info_func(self, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
+    @property
+    def expect_info_func(self) -> Union[Callable[[dict[str, Any]], Coroutine[Any, Any, None]], None]:
+        """謎の場所からくる情報を受け取る非同期関数"""
+        return self.__expect_info_func
+
+    @expect_info_func.setter
+    def expect_info_funcc(self, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
         if not asyncio.iscoroutinefunction(func):
             raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
         self.__expect_info_func = func
 
-    def _del_expect_info_func(self) -> None:
+    @expect_info_func.deleter
+    def expect_info_func(self) -> None:
         self.__expect_info_func = None
-
-    expect_info_func = property(None, _set_expect_info_func, _del_expect_info_func, "謎の場所からくる情報を受け取る非同期関数")
 
     async def main(self) -> NoReturn:
         """処理を開始する関数"""

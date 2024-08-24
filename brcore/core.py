@@ -7,25 +7,13 @@ from typing import Any, Callable, NoReturn, Optional, Union, Coroutine
 
 import websockets
 
-from brcore.util import ExceptionTexts
+from brcore.util import (
+    ExceptionTexts,
+    BackgroundTasks
+)
 
 
 __all__ = ["Bromine"]
-
-
-class _BackgroundTasks(set):
-    """`runner`のバックグラウンド実行するタスクの管理をする集合"""
-    def add(self, element: asyncio.Task) -> None:
-        if type(element) is asyncio.Task:
-            element.add_done_callback(self.discard)
-            return super().add(element)
-        else:
-            raise TypeError("element is not asyncio.Task")
-
-    def tasks_cancel(self) -> None:
-        """タスク達をキャンセル"""
-        for i in self:
-            i.cancel()
 
 
 class Bromine:
@@ -120,7 +108,7 @@ class Bromine:
         # send_queueをinitで作るとattached to a different loopとかいうゴミでるのでここで宣言
         self.__send_queue = asyncio.Queue()
         # バックグラウンドタスクの集合
-        backgrounds = _BackgroundTasks()
+        backgrounds = BackgroundTasks()
 
         try:
             await asyncio.create_task(self.__runner(backgrounds))
@@ -129,7 +117,7 @@ class Bromine:
             self.__is_running = False
             self.__log("finish main.")
 
-    async def __runner(self, background_tasks: _BackgroundTasks) -> NoReturn:
+    async def __runner(self, background_tasks: BackgroundTasks) -> NoReturn:
         """websocketとの交信を行うメインdaemon"""
         # 何回連続で接続に失敗したかのカウンター
         connect_fail_count = 0

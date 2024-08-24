@@ -173,10 +173,12 @@ class Bromine:
                             else:
                                 # type情報には載ってるけどidが一致しない...どういう状況だ？
                                 # expect_info_funcに流しておく
-                                background_tasks.add(asyncio.create_task(self.__expect_info_func(data)))
+                                if self.__expect_info_func is not None:
+                                    background_tasks.add(asyncio.create_task(self.__expect_info_func(data)))
                         else:
                             # 謎の場所からきた物
-                            background_tasks.add(asyncio.create_task(self.__expect_info_func(data)))
+                            if self.__expect_info_func is not None:
+                                background_tasks.add(asyncio.create_task(self.__expect_info_func(data)))
 
             except (
                 asyncio.exceptions.TimeoutError,

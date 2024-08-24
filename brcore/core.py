@@ -37,14 +37,16 @@ class Bromine:
         self.__COOL_TIME = 5
 
         # 値を保持するキューとか
-        # noteid: awaitablefunc
+        # noteid: coroutinefunc
         self.__subnotes: dict[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]]] = {}
-        # uuid:[channelname, awaitablefunc, params]
+        # uuid:[channelname, coroutinefunc, params]
         self.__channels: dict[str, tuple[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]], dict[str, Any]]] = {}
-        # uuid:tuple[isblock, awaitablefunc]
+        # uuid:tuple[isblock, coroutinefunc]
         self.__on_comebacks: dict[str, tuple[bool, Callable[[], Coroutine[Any, Any, None]]]] = {}
         # send_queueはここで作るとエラーが出るので型ヒントのみ
         self.__send_queue: asyncio.Queue[tuple[str, dict]]
+        # id: dict[str, coroutinefunc]
+        self.__ws_type_id_dict: dict[str, dict[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]]]] = {}
 
         # 実行中かどうかの変数
         self.__is_running: bool = False
@@ -156,20 +158,19 @@ class Bromine:
                     while True:
                         # データ受け取り
                         data = json.loads(await ws.recv())
-                        if data['type'] == 'channel':
-                            if data["body"]["id"] in self.__channels:
-                                background_tasks.add(asyncio.create_task(self.__channels[data["body"]["id"]][1](data["body"])))
-
-                        elif data["type"] == "noteUpdated":  # Todo:subNoteって絶対noteUpdatedで送られてくるか？
-                            # bodyにidが含まれている時
-                            if data["body"]["id"] in self.__subnotes:
-                                # subNoteの処理
-                                background_tasks.add(asyncio.create_task(self.__subnotes[data["body"]["id"]](data["body"])))
-
-                        else:
-                            # たまに謎めいたものが来ることがある（謎）
-                            if self.__expect_info_func is not None:
+                        if (type := data["type"]) in self.__ws_type_id_dict:
+                            if (id := data["body"]["id"]) in self.__ws_type_id_dict[type]:
+                                background_tasks.add(asyncio.create_task(self.__ws_type_id_dict[type][id](data["body"])))
+                            elif (wild_func := self.__ws_type_id_dict[type].get("ALLMATCH")):
+                                # ワイルドカードがある時
+                                background_tasks.add(asyncio.create_task(wild_func(data["body"])))
+                            else:
+                                # type情報には載ってるけどidが一致しない...どういう状況だ？
+                                # expect_info_funcに流しておく
                                 background_tasks.add(asyncio.create_task(self.__expect_info_func(data)))
+                        else:
+                            # 謎の場所からきた物
+                            background_tasks.add(asyncio.create_task(self.__expect_info_func(data)))
 
             except (
                 asyncio.exceptions.TimeoutError,
@@ -340,6 +341,63 @@ class Bromine:
                 "body": body_
             }))
 
+    def add_ws_type_id(self, type: str, id: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
+        """websocketの情報を振り分ける辞書に追加する
+
+        Parameters
+        ----------
+        type: str
+            type情報
+        id: str
+            識別id
+        func: CoroutineFunction
+            反応があった時に実行される非同期関数
+
+        Raises
+        -------
+        TypeError
+            非同期関数funcがcoroutinefunctionでない時
+        ValueError
+            idがすでに予約済みの場合
+
+        Note
+        ----
+        idが:obj:`ALLMATCH`の場合、ワイルドカード(type情報に一致する、他の識別idに引っかからなかった情報)になります。"""
+        if not asyncio.iscoroutinefunction(func):
+            # 関数が非同期関数じゃない時
+            raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
+
+        if self.__ws_type_id_dict.get(type):
+            if id in self.__ws_type_id_dict[type]:
+                # IDがもうすでに使われているとき
+                raise ValueError(ExceptionTexts.ID_ALREADY_RESERVED)
+        else:
+            # 辞書にtypeが登録されてなかったら初期化
+            self.__ws_type_id_dict[type] = {}
+
+        self.__ws_type_id_dict[type][id] = func
+
+    def del_ws_type_id(self, type: str, id: str) -> None:
+        """websocketの情報を振り分ける辞書から削除する
+
+        Parameters
+        ----------
+        type: str
+            type情報
+        id: str
+            識別id
+
+        Raises
+        ------
+        ValueError
+            type情報か識別idが不適のとき"""
+        if type not in self.__ws_type_id_dict:
+            raise ValueError(ExceptionTexts.TYPE_INVALID)
+        if id not in self.__ws_type_id_dict[type]:
+            raise ValueError(ExceptionTexts.ID_INVALID)
+
+        self.__ws_type_id_dict[type].pop(id)
+
     def ws_send(self, type: str, body: dict[str, Any]) -> None:
         """ウェブソケットへ情報を送る関数
 
@@ -394,15 +452,11 @@ class Bromine:
         返り値の識別idはws_disconnectで使用します
 
         また、idの指定がない場合、uuid4で自動生成されます"""
-        if not asyncio.iscoroutinefunction(func):
-            raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
         if id is None:
             # idがなかったら自動生成
             id = str(uuid.uuid4())
-        else:
-            if id in self.__channels:
-                raise ValueError(ExceptionTexts.ID_ALREADY_RESERVED)
 
+        self.add_ws_type_id("channel", id, func)
         # channelsに追加
         self.__channels[id] = (channel, func, params)
 
@@ -433,8 +487,7 @@ class Bromine:
         ------
         ValueError
             識別idが不適のとき"""
-        if id not in self.__channels:
-            raise ValueError(ExceptionTexts.ID_INVALID)
+        self.del_ws_type_id("channel", id)
         channel = self.__channels.pop(id)[0]
 
         if self.__is_running:
@@ -458,10 +511,7 @@ class Bromine:
             非同期関数funcがcoroutinefunctionでない時
         ValueError
             もうすでにキャプチャしている時"""
-        if not asyncio.iscoroutinefunction(func):
-            raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
-        if noteid in self.__subnotes:
-            raise ValueError(ExceptionTexts.ID_ALREADY_RESERVED)
+        self.add_ws_type_id("noteUpdated", noteid, func)
         self.__subnotes[noteid] = func
 
         if self.__is_running:
@@ -482,8 +532,7 @@ class Bromine:
         ------
         ValueError
             ノートIDがまだキャプチャされていないものの時"""
-        if noteid not in self.__subnotes:
-            raise ValueError(ExceptionTexts.ID_INVALID)
+        self.del_ws_type_id("noteUpdated", noteid)
         self.__subnotes.pop(noteid)
 
         if self.__is_running:

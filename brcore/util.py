@@ -18,6 +18,8 @@ class BackgroundTasks(set):
 
 
 class ExceptionTexts(NamedTuple):
+    TYPE_INVALID = "type情報が不適です。"
+
     ID_ALREADY_RESERVED = "IDがすでに予約済みです。"
     ID_INVALID = "IDが不適です。"
 

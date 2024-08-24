@@ -37,16 +37,14 @@ class Bromine:
         self.__COOL_TIME = 5
 
         # 値を保持するキューとか
-        # noteid: coroutinefunc
-        self.__subnotes: dict[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]]] = {}
-        # uuid:[channelname, coroutinefunc, params]
-        self.__channels: dict[str, tuple[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]], dict[str, Any]]] = {}
         # uuid:tuple[isblock, coroutinefunc]
         self.__on_comebacks: dict[str, tuple[bool, Callable[[], Coroutine[Any, Any, None]]]] = {}
         # send_queueはここで作るとエラーが出るので型ヒントのみ
         self.__send_queue: asyncio.Queue[tuple[str, dict]]
-        # id: dict[str, coroutinefunc]
+        # type: dict[id, coroutinefunc]
         self.__ws_type_id_dict: dict[str, dict[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]]]] = {}
+        # tuple[type, id]: body
+        self.__ws_on_comebacks: dict[tuple[str, str], dict[str, Any]] = {}
 
         # 実行中かどうかの変数
         self.__is_running: bool = False
@@ -65,6 +63,9 @@ class Bromine:
         self.__logger = logging.getLogger("Bromine")
         # logを簡単にできるよう部分適用する
         self.__log = partial(self.__logger.log, logging.DEBUG)
+
+        # 再接続する奴を設定
+        self.add_comeback(self.__ws_comeback_reconnect, block=True)
 
     @property
     def loglevel(self) -> int:
@@ -292,59 +293,64 @@ class Bromine:
         self.__log(f"delete comeback. id: {id}")
 
     async def __ws_send_d(self, ws: websockets.WebSocketClientProtocol) -> NoReturn:
-        """websocketを送るdaemon"""
-        # すでに接続済みの物に送らないようにしたりしないようにするやつ
-        already_connected_ids: set[str] = set()
-        already_subscribe_notes: set[str] = set()
-        # まずはchannelsの再接続から始める
-        for i, v in self.__channels.items():
-            already_connected_ids.add(i)
-            await ws.send(json.dumps({
-                "type": "connect",
-                "body": {
-                    "channel": v[0],
-                    "id": i,
-                    "params": v[2]
-                }
-            }))
-
-        # ノートのキャプチャ
-        for noteid in self.__subnotes.keys():
-            already_subscribe_notes.add(noteid)
-            await ws.send(json.dumps({
-                "type": "subNote",
-                "body": {"id": noteid}
-            }))
-
-        # queueの初期化
-        while not self.__send_queue.empty():
-            type_, body_ = await self.__send_queue.get()
-            if type_ == "connect":
-                if body_["id"] in already_connected_ids:
-                    # もうすでに送ったやつなので送らない
-                    continue
-                else:
-                    # 追加する
-                    already_connected_ids.add(body_["id"])
-
-            elif type_ == "subNote":
-                if body_["id"] in already_subscribe_notes:
-                    continue  # connectと同様
-                else:
-                    already_subscribe_notes.add(body_["id"])
-
-            await ws.send(json.dumps({
-                "type": type_,
-                "body": body_
-            }))
-
-        # あとはずっとqueueからgetしてそれを送る。
+        """websocketの情報を送るdaemon"""
         while True:
             type_, body_ = await self.__send_queue.get()
             await ws.send(json.dumps({
                 "type": type_,
                 "body": body_
             }))
+
+    async def __ws_comeback_reconnect(self) -> None:
+        """comebackしたときに再接続するやつ"""
+        for i, body in self.__ws_on_comebacks.items():
+            self.ws_send(i[0], body)
+
+    def add_ws_recconect(self, type: str, id: str, body: dict[str, Any]) -> None:
+        """接続しなおした時に再接続(情報を送る)する物を追加する
+
+        Parameters
+        ----------
+        type: str
+            type情報
+        id: str
+            識別id
+        body: dict[str, Any]
+            body情報
+
+        Raises
+        ------
+        ValueError
+            type情報と識別idの組み合わせがすでに予約済みのとき。
+
+        Note
+        ----
+        `body["id"]`は識別idに上書きされます。"""
+        body["id"] = id
+
+        if self.__ws_on_comebacks.get((type, id)):
+            raise ValueError(ExceptionTexts.TYPE_AND_ID_ALREADY_RESERVED)
+
+        self.__ws_on_comebacks[(type, id)] = body
+
+    def del_ws_recconect(self, type: str, id: str) -> None:
+        """接続しなおした時に再接続(情報を送る)する物を削除する
+
+        Parameters
+        ----------
+        type: str
+            type情報
+        id: str
+            識別id
+
+        Raises
+        ------
+        ValueError
+            type情報か識別idが不適のとき"""
+        if self.__ws_on_comebacks.get((type, id)):
+            self.__ws_on_comebacks.pop((type, id))
+        else:
+            raise ValueError(ExceptionTexts.TYPE_AND_ID_INVALID)
 
     def add_ws_type_id(self, type: str, id: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
         """websocketの情報を振り分ける辞書に追加する
@@ -461,16 +467,15 @@ class Bromine:
             # idがなかったら自動生成
             id = str(uuid.uuid4())
 
+        body = {
+            "channel": channel,
+            "id": id,
+            "params": params
+        }
         self.add_ws_type_id("channel", id, func)
-        # channelsに追加
-        self.__channels[id] = (channel, func, params)
+        self.add_ws_recconect("connect", id, body)
 
         if self.__is_running:
-            body = {
-                "channel": channel,
-                "id": id,
-                "params": params
-            }
             # もしsend_queueがある時(実行中の時)
             self.ws_send("connect", body)
             self.__log(f"connect channel. name: {channel}, id: {id}")
@@ -493,13 +498,13 @@ class Bromine:
         ValueError
             識別idが不適のとき"""
         self.del_ws_type_id("channel", id)
-        channel = self.__channels.pop(id)[0]
+        self.del_ws_recconect("connect", id)
 
         if self.__is_running:
             body = {"id": id}
             self.ws_send("disconnect", body)
 
-        self.__log(f"disconnect channel. name: {channel}, id: {id}")
+        self.__log(f"disconnect channel. id: {id}")
 
     def ws_subnote(self, noteid: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
         """投稿をキャプチャする関数
@@ -516,11 +521,11 @@ class Bromine:
             非同期関数funcがcoroutinefunctionでない時
         ValueError
             もうすでにキャプチャしている時"""
+        body = {"id": noteid}
         self.add_ws_type_id("noteUpdated", noteid, func)
-        self.__subnotes[noteid] = func
+        self.add_ws_recconect("subNote", noteid, body)
 
         if self.__is_running:
-            body = {"id": noteid}
             self.ws_send("subNote", body)
 
         self.__log(f"subscribe note. id: {noteid}")
@@ -538,7 +543,7 @@ class Bromine:
         ValueError
             ノートIDがまだキャプチャされていないものの時"""
         self.del_ws_type_id("noteUpdated", noteid)
-        self.__subnotes.pop(noteid)
+        self.del_ws_recconect("subNote", noteid)
 
         if self.__is_running:
             body = {"id": noteid}

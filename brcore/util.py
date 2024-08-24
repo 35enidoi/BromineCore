@@ -23,6 +23,9 @@ class ExceptionTexts(NamedTuple):
     ID_ALREADY_RESERVED = "IDがすでに予約済みです。"
     ID_INVALID = "IDが不適です。"
 
+    TYPE_AND_ID_ALREADY_RESERVED = "type情報とIDの組み合わせがすでに予約済みです。"
+    TYPE_AND_ID_INVALID = "type情報とIDの組み合わせが不適です。"
+
     FUNCTION_NOT_COROUTINEFUNC = "関数がcoroutinefunctionではありません。"
 
     MAIN_FUNC_NOT_RUNNING = "メイン関数が実行されていません"

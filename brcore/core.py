@@ -101,7 +101,7 @@ class Bromine:
         return self.__expect_info_func
 
     @expect_info_func.setter
-    def expect_info_funcc(self, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
+    def expect_info_func(self, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
         if not asyncio.iscoroutinefunction(func):
             raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
         self.__expect_info_func = func

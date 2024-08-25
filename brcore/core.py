@@ -331,7 +331,7 @@ class Bromine:
 
         Note
         ----
-        `body["id"]`は識別idに上書きされます。"""
+        body["id"]は識別idに上書きされます。"""
         body["id"] = id
 
         if self.__ws_on_comebacks.get((type, id)):
@@ -383,7 +383,7 @@ class Bromine:
 
         Note
         ----
-        idが:obj:`ALLMATCH`の場合、ワイルドカード(type情報に一致する、他の識別idに引っかからなかった情報)になります。"""
+        idが`ALLMATCH`の場合、ワイルドカード(type情報に一致する、他の識別idに引っかからなかった情報)になります。"""
         if not asyncio.iscoroutinefunction(func):
             # 関数が非同期関数じゃない時
             raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)

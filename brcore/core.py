@@ -27,7 +27,7 @@ class Bromine:
         インスタンス名
     token: :obj:`str`, optional
         トークン
-    secure_connect: bool, default True
+    secure_connect: :obj:`bool`, default True
         セキュアな接続をするかどうか
 
         これはローカルで構築したインスタンス等セキュアな接続が
@@ -573,7 +573,7 @@ class Bromine:
         channel: str
             チャンネル名"""
         if not isinstance(channel, str):
-            raise TypeError(ExceptionTexts.DECO_ARG_NOT_STR)
+            raise TypeError(ExceptionTexts.DECO_ARG_INVALID)
 
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
             self.ws_connect(channel=channel, func=func)
@@ -589,7 +589,7 @@ class Bromine:
         noteid: str
             ノートのid"""
         if not isinstance(noteid, str):
-            raise TypeError(ExceptionTexts.DECO_ARG_NOT_STR)
+            raise TypeError(ExceptionTexts.DECO_ARG_INVALID)
 
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
             self.ws_subnote(noteid=noteid, func=func)
@@ -597,10 +597,18 @@ class Bromine:
 
         return _wrap
 
-    def add_comeback_deco(self):
-        """add_comebackのデコレーター版"""
+    def add_comeback_deco(self, block: bool = False):
+        """add_comebackのデコレーター版
+
+        Parameters
+        ----------
+        block: :obj:`bool`, default False
+            websocketとの交信をブロッキングして実行するか"""
+        if not isinstance(block, bool):
+            raise TypeError(ExceptionTexts.DECO_ARG_INVALID)
+
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
-            self.add_comeback(func=func)
+            self.add_comeback(func=func, block=block)
             return func
 
         return _wrap

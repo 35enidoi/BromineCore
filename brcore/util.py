@@ -30,4 +30,4 @@ class ExceptionTexts(NamedTuple):
 
     MAIN_FUNC_NOT_RUNNING = "メイン関数が実行されていません"
 
-    DECO_ARG_NOT_STR = "引数がstrではありません。デコレーターの使い方を間違えている可能性があります。"
+    DECO_ARG_INVALID = "引数が不正です。デコレーターの使い方を間違えている可能性があります。"

@@ -167,7 +167,7 @@ class Bromine:
                         # データ受け取り
                         data = json.loads(await ws.recv())
                         if (type_ := data["type"]) in self.__ws_type_id_dict:
-                            if (id := data["body"]["id"]) in self.__ws_type_id_dict[type_]:
+                            if (id := data["body"].get("id")) and id in self.__ws_type_id_dict[type_]:
                                 background_tasks.add(asyncio.create_task(self.__ws_type_id_dict[type_][id](data["body"])))
                             elif (wild_func := self.__ws_type_id_dict[type_].get("ALLMATCH")):
                                 # ワイルドカードがある時

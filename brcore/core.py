@@ -383,7 +383,9 @@ class Bromine:
 
         Note
         ----
-        idが`ALLMATCH`の場合、ワイルドカード(type情報に一致する、他の識別idに引っかからなかった情報)になります。"""
+        idが`ALLMATCH`の場合、ワイルドカード(type情報に一致する、他の識別idに引っかからなかった情報)になります。
+
+        ワイルドカードは、id情報が存在しない場合にも振り分けられます。(emojiAdded等)"""
         if not asyncio.iscoroutinefunction(func):
             # 関数が非同期関数じゃない時
             raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)

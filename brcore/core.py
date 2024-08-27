@@ -310,7 +310,7 @@ class Bromine:
         for i, body in self.__ws_on_comebacks.items():
             self.ws_send(i[0], body)
 
-    def add_ws_reconect(self, type: str, id: str, body: dict[str, Any]) -> None:
+    def add_ws_reconnect(self, type: str, id: str, body: dict[str, Any]) -> None:
         """接続しなおした時に再接続(情報を送る)する物を追加する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
@@ -339,7 +339,7 @@ class Bromine:
 
         self.__ws_on_comebacks[(type, id)] = body
 
-    def del_ws_reconect(self, type: str, id: str) -> None:
+    def del_ws_reconnect(self, type: str, id: str) -> None:
         """接続しなおした時に再接続(情報を送る)する物を削除する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
@@ -489,7 +489,7 @@ class Bromine:
             "params": params
         }
         self.add_ws_type_id("channel", id, func)
-        self.add_ws_reconect("connect", id, body)
+        self.add_ws_reconnect("connect", id, body)
 
         if self.__is_running:
             # もしsend_queueがある時(実行中の時)
@@ -514,7 +514,7 @@ class Bromine:
         ValueError
             識別idが不適のとき"""
         self.del_ws_type_id("channel", id)
-        self.del_ws_reconect("connect", id)
+        self.del_ws_reconnect("connect", id)
 
         if self.__is_running:
             body = {"id": id}
@@ -539,7 +539,7 @@ class Bromine:
             もうすでにキャプチャしている時"""
         body = {"id": noteid}
         self.add_ws_type_id("noteUpdated", noteid, func)
-        self.add_ws_reconect("subNote", noteid, body)
+        self.add_ws_reconnect("subNote", noteid, body)
 
         if self.__is_running:
             self.ws_send("subNote", body)
@@ -559,7 +559,7 @@ class Bromine:
         ValueError
             ノートIDがまだキャプチャされていないものの時"""
         self.del_ws_type_id("noteUpdated", noteid)
-        self.del_ws_reconect("subNote", noteid)
+        self.del_ws_reconnect("subNote", noteid)
 
         if self.__is_running:
             body = {"id": noteid}

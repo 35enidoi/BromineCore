@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from enum import Enum
-from typing import TypedDict, Literal
 
 
 class ChannelNames(Enum):
@@ -9,8 +10,3 @@ class ChannelNames(Enum):
     GLOBAL_TIMELINE = "globalTimeline"
 
     MAIN = "main"
-
-
-class TimeLineEventNote(TypedDict):
-    id: str
-    type: Literal["note"]

@@ -1,9 +1,7 @@
-from __future__ import annotations
-
-from enum import Enum
+from typing import NamedTuple
 
 
-class ChannelNames(Enum):
+class MisskeyChannelNames(NamedTuple):
     HOME_TIMELINE = "homeTimeline"
     LOCAL_TIMELINE = "localTimeline"
     HYBRID_TIMELINE = "hybridTimeline"

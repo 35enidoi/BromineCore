@@ -8,8 +8,10 @@ from typing import Any, Callable, NoReturn, Optional, Union, Coroutine
 import websockets
 
 from brcore.util import (
-    ExceptionTexts,
     BackgroundTasks
+)
+from brcore.enum import (
+    ExceptionTexts
 )
 
 

@@ -4,6 +4,7 @@ import uuid
 import logging
 from functools import partial
 from typing import Any, Callable, NoReturn, Optional, Union, Coroutine
+from warnings import warn
 
 import websockets
 
@@ -310,9 +311,9 @@ class Bromine:
     async def __ws_comeback_reconnect(self) -> None:
         """comebackしたときに再接続するやつ"""
         for i, body in self.__ws_on_comebacks.items():
-            self.ws_send(i[0], body)
+            self._ws_send(i[0], body)
 
-    def add_ws_reconnect(self, type: str, id: str, body: dict[str, Any]) -> None:
+    def _add_ws_reconnect(self, type: str, id: str, body: dict[str, Any]) -> None:
         """接続しなおした時に再接続(情報を送る)する物を追加する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
@@ -341,7 +342,7 @@ class Bromine:
 
         self.__ws_on_comebacks[(type, id)] = body
 
-    def del_ws_reconnect(self, type: str, id: str) -> None:
+    def _del_ws_reconnect(self, type: str, id: str) -> None:
         """接続しなおした時に再接続(情報を送る)する物を削除する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
@@ -362,7 +363,7 @@ class Bromine:
         else:
             raise ValueError(ExceptionTexts.TYPE_AND_ID_INVALID)
 
-    def add_ws_type_id(self, type: str, id: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
+    def _add_ws_type_id(self, type: str, id: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
         """websocketの情報を振り分ける辞書に追加する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
@@ -402,7 +403,7 @@ class Bromine:
 
         self.__ws_type_id_dict[type][id] = func
 
-    def del_ws_type_id(self, type: str, id: str) -> None:
+    def _del_ws_type_id(self, type: str, id: str) -> None:
         """websocketの情報を振り分ける辞書から削除する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
@@ -425,7 +426,7 @@ class Bromine:
 
         self.__ws_type_id_dict[type].pop(id)
 
-    def ws_send(self, type: str, body: dict[str, Any]) -> None:
+    def _ws_send(self, type: str, body: dict[str, Any]) -> None:
         """ウェブソケットへ情報を送る関数
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
@@ -490,12 +491,12 @@ class Bromine:
             "id": id,
             "params": params
         }
-        self.add_ws_type_id("channel", id, func)
-        self.add_ws_reconnect("connect", id, body)
+        self._add_ws_type_id("channel", id, func)
+        self._add_ws_reconnect("connect", id, body)
 
         if self.__is_running:
             # もしsend_queueがある時(実行中の時)
-            self.ws_send("connect", body)
+            self._ws_send("connect", body)
             self.__log(f"connect channel. name: {channel}, id: {id}")
         else:
             # ない時(実行前)
@@ -515,12 +516,12 @@ class Bromine:
         ------
         ValueError
             識別idが不適のとき"""
-        self.del_ws_type_id("channel", id)
-        self.del_ws_reconnect("connect", id)
+        self._del_ws_type_id("channel", id)
+        self._del_ws_reconnect("connect", id)
 
         if self.__is_running:
             body = {"id": id}
-            self.ws_send("disconnect", body)
+            self._ws_send("disconnect", body)
 
         self.__log(f"disconnect channel. id: {id}")
 
@@ -540,11 +541,11 @@ class Bromine:
         ValueError
             もうすでにキャプチャしている時"""
         body = {"id": noteid}
-        self.add_ws_type_id("noteUpdated", noteid, func)
-        self.add_ws_reconnect("subNote", noteid, body)
+        self._add_ws_type_id("noteUpdated", noteid, func)
+        self._add_ws_reconnect("subNote", noteid, body)
 
         if self.__is_running:
-            self.ws_send("subNote", body)
+            self._ws_send("subNote", body)
 
         self.__log(f"subscribe note. id: {noteid}")
 
@@ -560,12 +561,12 @@ class Bromine:
         ------
         ValueError
             ノートIDがまだキャプチャされていないものの時"""
-        self.del_ws_type_id("noteUpdated", noteid)
-        self.del_ws_reconnect("subNote", noteid)
+        self._del_ws_type_id("noteUpdated", noteid)
+        self._del_ws_reconnect("subNote", noteid)
 
         if self.__is_running:
             body = {"id": noteid}
-            self.ws_send("unsubNote", body)
+            self._ws_send("unsubNote", body)
 
         self.__log(f"unsubscribe note. id: {noteid}")
 
@@ -616,3 +617,25 @@ class Bromine:
             return func
 
         return _wrap
+
+    # deprecated funtions
+
+    def ws_send(self, *args, **karg):
+        warn(message="Use `_ws_send`.", category=DeprecationWarning, stacklevel=2)
+        return self._ws_send(*args, **karg)
+
+    def del_ws_type_id(self, *args, **kargs):
+        warn(message="Use `_del_ws_type_id`.", category=DeprecationWarning, stacklevel=2)
+        return self._del_ws_type_id(*args, **kargs)
+
+    def add_ws_type_id(self, *args, **kargs):
+        warn(message="Use `_add_ws_type_id`.", category=DeprecationWarning, stacklevel=2)
+        return self._add_ws_type_id(*args, **kargs)
+
+    def del_ws_reconnect(self, *args, **kargs):
+        warn(message="Use `_del_ws_reconnect`.", category=DeprecationWarning, stacklevel=2)
+        return self._del_ws_reconnect(*args, **kargs)
+
+    def add_ws_reconnect(self, *args, **kargs):
+        warn(message="Use `_add_ws_reconnect`.", category=DeprecationWarning, stacklevel=2)
+        return self._add_ws_reconnect(*args, **kargs)

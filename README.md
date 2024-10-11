@@ -1,21 +1,20 @@
 # BromineCore
- [ぶろみね](https://github.com/35enidoi/bromine35bot)くんのコア部分の実装、そしてmisskeyのwebsocketAPI単体の実装です。  
- 一々websocketの実装を作らなくても良くなります！  
+[ぶろみね](https://github.com/35enidoi/bromine35bot)くんのコア部分の実装、そしてmisskeyのwebsocketAPI単体の実装です。  
 
- ローカルのノートを講読したり、通知を取得したり。リバーシも頑張れば実装できます。  
+ローカルのノートを講読したり、通知を取得したり。リバーシも頑張れば実装できます。  
 
- 何か問題が発生したり追加してほしい機能があったらissueに書いてください  
- 頑張って実装したり解決します
+何か問題が発生したり追加してほしい機能があったらissueに書いてください  
+頑張って実装したり解決します
 # Example
 簡単なタイムライン閲覧クライアントです。  
 トークン無しでタイムラインをリアルタイムで閲覧できます。
 ```py
 import asyncio
-from brcore import Bromine
+from brcore import Bromine, enum
 
 
 INSTANCE = "misskey.io"
-TL = "localTimeline"
+TL = enum.MisskeyChannelNames.LOCAL_TIMELINE
 
 
 def note_printer(note: dict) -> None:

@@ -185,18 +185,15 @@ class Bromine:
                             if self.__expect_info_func is not None:
                                 background_tasks.add(asyncio.create_task(self.__expect_info_func(data)))
 
-            except (
-                asyncio.exceptions.TimeoutError,
-                websockets.exceptions.ConnectionClosed,
-            ) as e:
-                # websocketが死んだりタイムアウトした時の処理
-                self.__log(f"error occured: {e}")
-                await asyncio.sleep(self.__COOL_TIME)
-                if connect_fail_count > 5:
-                    # Todo: 例外を投げる？
-                    # 5回以上連続で失敗したとき長く寝るようにする
-                    # とりあえず30待つようにする
-                    await asyncio.sleep(30)
+            except asyncio.exceptions.TimeoutError as e:
+                # 接続がタイムアウトしたとき
+                self.__log(f"error occured: Timeout {e}")
+                self.__runner_exception_wait(connect_fail_count)
+
+            except websockets.ConnectionClosed as e:
+                # websocketが勝手に切れたりしたとき
+                self.__log(f"error occured: Websocket Error [{e}]")
+                self.__runner_exception_wait(connect_fail_count)
 
             except websockets.exceptions.InvalidStatusCode as e:
                 # ステータスコードが変な時
@@ -205,10 +202,7 @@ class Bromine:
                     # 400番台
                     raise e
                 else:
-                    await asyncio.sleep(self.__COOL_TIME)
-                    if connect_fail_count > 5:
-                        # Todo: 上のタイムアウトと同様
-                        await asyncio.sleep(30)
+                    await self.__runner_exception_wait(connect_fail_count)
 
             except Exception as e:
                 # 予定外のエラー発生時。
@@ -234,6 +228,14 @@ class Bromine:
                     except asyncio.CancelledError:
                         pass
                     comebacks = None
+
+    async def __runner_exception_wait(self, fail_count: int) -> None:
+        await asyncio.sleep(self.__COOL_TIME)
+        if fail_count > 5:
+            # Todo: 例外投げるべき？
+            #       死にすぎてる～っていう例外を投げるようにする設定を追加するべき？
+            #       現状30秒寝る
+            await asyncio.sleep(30)
 
     def add_comeback(self,
                      func: Callable[[], Coroutine[Any, Any, None]],

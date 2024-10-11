@@ -623,21 +623,26 @@ class Bromine:
     # deprecated funtions
 
     def ws_send(self, *args, **karg):
+        """deprecated function. use `_ws_send`"""
         warn(message="Use `_ws_send`.", category=DeprecationWarning, stacklevel=2)
         return self._ws_send(*args, **karg)
 
     def del_ws_type_id(self, *args, **kargs):
+        """deprecated function. use `_del_ws_type_id`"""
         warn(message="Use `_del_ws_type_id`.", category=DeprecationWarning, stacklevel=2)
         return self._del_ws_type_id(*args, **kargs)
 
     def add_ws_type_id(self, *args, **kargs):
+        """deprecated function. use `_add_ws_type_id`"""
         warn(message="Use `_add_ws_type_id`.", category=DeprecationWarning, stacklevel=2)
         return self._add_ws_type_id(*args, **kargs)
 
     def del_ws_reconnect(self, *args, **kargs):
+        """deprecated function. use `_del_ws_reconnect`"""
         warn(message="Use `_del_ws_reconnect`.", category=DeprecationWarning, stacklevel=2)
         return self._del_ws_reconnect(*args, **kargs)
 
     def add_ws_reconnect(self, *args, **kargs):
+        """deprecated function. use `_add_ws_reconnect`"""
         warn(message="Use `_add_ws_reconnect`.", category=DeprecationWarning, stacklevel=2)
         return self._add_ws_reconnect(*args, **kargs)

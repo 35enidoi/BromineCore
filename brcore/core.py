@@ -4,7 +4,7 @@ import uuid
 import logging
 from functools import partial
 from typing import Any, Callable, NoReturn, Optional, Union, Coroutine
-from warnings import warn
+from typing_extensions import deprecated
 
 import websockets
 
@@ -622,27 +622,22 @@ class Bromine:
 
     # deprecated funtions
 
-    def ws_send(self, *args, **karg):
-        """deprecated function. use `_ws_send`"""
-        warn(message="Use `_ws_send`.", category=DeprecationWarning, stacklevel=2)
-        return self._ws_send(*args, **karg)
+    @deprecated("Use `_ws_send`")
+    def ws_send(self, type: str, body: dict[str, Any]) -> None:
+        return self._ws_send(type=type, body=body)
 
-    def del_ws_type_id(self, *args, **kargs):
-        """deprecated function. use `_del_ws_type_id`"""
-        warn(message="Use `_del_ws_type_id`.", category=DeprecationWarning, stacklevel=2)
-        return self._del_ws_type_id(*args, **kargs)
+    @deprecated("Use `_del_ws_type_id`")
+    def del_ws_type_id(self, type: str, id: str) -> None:
+        return self._del_ws_type_id(type=type, id=id)
 
-    def add_ws_type_id(self, *args, **kargs):
-        """deprecated function. use `_add_ws_type_id`"""
-        warn(message="Use `_add_ws_type_id`.", category=DeprecationWarning, stacklevel=2)
-        return self._add_ws_type_id(*args, **kargs)
+    @deprecated("Use `_add_ws_type_id`")
+    def add_ws_type_id(self, type: str, id: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
+        return self._add_ws_type_id(type=type, id=id, func=func)
 
-    def del_ws_reconnect(self, *args, **kargs):
-        """deprecated function. use `_del_ws_reconnect`"""
-        warn(message="Use `_del_ws_reconnect`.", category=DeprecationWarning, stacklevel=2)
-        return self._del_ws_reconnect(*args, **kargs)
+    @deprecated("Use `_del_ws_reconnect`")
+    def del_ws_reconnect(self, type: str, id: str) -> None:
+        return self._del_ws_reconnect(type=type, id=id)
 
-    def add_ws_reconnect(self, *args, **kargs):
-        """deprecated function. use `_add_ws_reconnect`"""
-        warn(message="Use `_add_ws_reconnect`.", category=DeprecationWarning, stacklevel=2)
-        return self._add_ws_reconnect(*args, **kargs)
+    @deprecated("Use `_add_ws_reconnect`")
+    def add_ws_reconnect(self, type: str, id: str, body: dict[str, Any]) -> None:
+        return self._add_ws_reconnect(type=type, id=id, body=body)

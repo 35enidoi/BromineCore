@@ -614,7 +614,7 @@ class Bromine:
         if not isinstance(block, bool):
             raise TypeError(ExceptionTexts.DECO_ARG_INVALID)
 
-        def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
+        def _wrap(func: Callable[[], Coroutine[Any, Any, None]]):
             self.add_comeback(func=func, block=block)
             return func
 

@@ -4,7 +4,6 @@ import uuid
 import logging
 from functools import partial
 from typing import Any, Callable, NoReturn, Optional, Union, Coroutine
-from typing_extensions import deprecated
 
 import websockets
 
@@ -619,25 +618,3 @@ class Bromine:
             return func
 
         return _wrap
-
-    # deprecated funtions
-
-    @deprecated("Use `_ws_send`")
-    def ws_send(self, type: str, body: dict[str, Any]) -> None:
-        return self._ws_send(type=type, body=body)
-
-    @deprecated("Use `_del_ws_type_id`")
-    def del_ws_type_id(self, type: str, id: str) -> None:
-        return self._del_ws_type_id(type=type, id=id)
-
-    @deprecated("Use `_add_ws_type_id`")
-    def add_ws_type_id(self, type: str, id: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
-        return self._add_ws_type_id(type=type, id=id, func=func)
-
-    @deprecated("Use `_del_ws_reconnect`")
-    def del_ws_reconnect(self, type: str, id: str) -> None:
-        return self._del_ws_reconnect(type=type, id=id)
-
-    @deprecated("Use `_add_ws_reconnect`")
-    def add_ws_reconnect(self, type: str, id: str, body: dict[str, Any]) -> None:
-        return self._add_ws_reconnect(type=type, id=id, body=body)

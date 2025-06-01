@@ -112,7 +112,7 @@ class Bromine:
     def expect_info_func(self) -> None:
         self.__expect_info_func = None
 
-    async def main(self) -> NoReturn:
+    async def main(self) -> None:
         """処理を開始する関数"""
         self.__log("start main.")
 
@@ -187,17 +187,18 @@ class Bromine:
             except asyncio.exceptions.TimeoutError as e:
                 # 接続がタイムアウトしたとき
                 self.__log(f"error occured: Timeout {e}")
-                self.__runner_exception_wait(connect_fail_count)
+                await self.__runner_exception_wait(connect_fail_count)
 
             except websockets.ConnectionClosed as e:
                 # websocketが勝手に切れたりしたとき
                 self.__log(f"error occured: Websocket Error [{e}]")
-                self.__runner_exception_wait(connect_fail_count)
+                await self.__runner_exception_wait(connect_fail_count)
 
-            except websockets.exceptions.InvalidStatusCode as e:
+            except websockets.exceptions.InvalidStatus as e:
                 # ステータスコードが変な時
-                self.__log(f"error occured: Invalid Status Code [{e.status_code}]")
-                if e.status_code // 100 == 4:
+                status_code = e.response.status_code
+                self.__log(f"error occured: Invalid Status Code [{status_code}]")
+                if status_code // 100 == 4:
                     # 400番台
                     raise e
                 else:
@@ -270,7 +271,7 @@ class Bromine:
         また、idの指定がない場合、uuid4で自動生成されます"""
         if id is None:
             # もしIDがない時生成する
-            id = uuid.uuid4()
+            id = uuid.uuid4().hex
         else:
             if id in self.__on_comebacks:
                 raise ValueError(ExceptionTexts.ID_ALREADY_RESERVED)
@@ -300,7 +301,7 @@ class Bromine:
         self.__on_comebacks.pop(id)
         self.__log(f"delete comeback. id: {id}")
 
-    async def __ws_send_d(self, ws: websockets.WebSocketClientProtocol) -> NoReturn:
+    async def __ws_send_d(self, ws: websockets.ClientConnection) -> NoReturn:
         """websocketの情報を送るdaemon"""
         while True:
             type_, body_ = await self.__send_queue.get()

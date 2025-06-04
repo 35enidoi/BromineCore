@@ -1,7 +1,7 @@
 # BromineCore
-[ぶろみね](https://github.com/35enidoi/bromine35bot)くんのコア部分の実装、そしてmisskeyのwebsocketAPI単体の実装です。  
+[ぶろみね](https://github.com/35enidoi/bromine35bot)くんのコア部分の実装、misskeyのwebsocketAPI単体の実装です。  
 
-ローカルのノートを講読したり、通知を取得したり。リバーシも頑張れば実装できます。  
+ローカルのノートを講読したり、通知を取得したり。リバーシbotも頑張れば実装できます。  
 
 何か問題が発生したり追加してほしい機能があったらissueに書いてください  
 頑張って実装したり解決します

@@ -86,7 +86,8 @@ class MisskeyChannelArgs:
     @staticmethod
     def Hashtag(q: list[list[str]]) -> HashtagArgsType:
         """
-        q: List of hashtags, e.g. [['#hashtag1', '#hashtag2'], ['#hashtag3']]
+        q
+          List of hashtags, e.g. `[['#hashtag1', '#hashtag2'], ['#hashtag3']]`
         """
         return HashtagArgsType(q=q)
 

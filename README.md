@@ -15,6 +15,7 @@ from brcore import Bromine, enum
 
 INSTANCE = "misskey.io"
 TL = enum.MisskeyChannelNames.LOCAL_TIMELINE
+TL_ARGS = enum.MisskeyChannelArgs.LocalTimeline()  # 実際のところ引数はいらないので、空の辞書になっている
 
 
 def note_printer(note: dict) -> None:
@@ -72,7 +73,7 @@ async def note_async(note: dict) -> None:
 
 async def main() -> None:
     brm = Bromine(instance=INSTANCE)
-    brm.ws_connect(TL, note_async)
+    brm.ws_connect(TL, note_async, **TL_ARGS)
     print("start...")
     await brm.main()
 

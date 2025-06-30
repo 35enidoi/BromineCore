@@ -112,7 +112,7 @@ class Bromine:
     def expect_info_func(self) -> None:
         self.__expect_info_func = None
 
-    async def main(self) -> None:
+    async def main(self) -> NoReturn:  # type: ignore  __runnerはNoReturnなのでこれもNoReturnである
         """処理を開始する関数"""
         self.__log("start main.")
 

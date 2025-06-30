@@ -1,7 +1,7 @@
 # BromineCore
-[ぶろみね](https://github.com/35enidoi/bromine35bot)くんのコア部分の実装、そしてmisskeyのwebsocketAPI単体の実装です。  
+[ぶろみね](https://github.com/35enidoi/bromine35bot)くんのコア部分の実装、misskeyのwebsocketAPI単体の実装です。  
 
-ローカルのノートを講読したり、通知を取得したり。リバーシも頑張れば実装できます。  
+ローカルのノートを講読したり、通知を取得したり。リバーシbotも頑張れば実装できます。  
 
 何か問題が発生したり追加してほしい機能があったらissueに書いてください  
 頑張って実装したり解決します
@@ -15,6 +15,7 @@ from brcore import Bromine, enum
 
 INSTANCE = "misskey.io"
 TL = enum.MisskeyChannelNames.LOCAL_TIMELINE
+TL_ARGS = enum.MisskeyChannelArgs.LocalTimeline()  # 実際のところ引数はいらないので、空の辞書になっている
 
 
 def note_printer(note: dict) -> None:
@@ -72,7 +73,7 @@ async def note_async(note: dict) -> None:
 
 async def main() -> None:
     brm = Bromine(instance=INSTANCE)
-    brm.ws_connect(TL, note_async)
+    brm.ws_connect(TL, note_async, **TL_ARGS)
     print("start...")
     await brm.main()
 

@@ -3,11 +3,10 @@ requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-version = "1.1"
+version = "1.2"
 name = "brominecore"
 dependencies = [
-    "websockets",
-    "typing-extensions"
+    "websockets"
 ]
 requires-python = ">= 3.10"
 authors = [
@@ -16,7 +15,7 @@ authors = [
 maintainers = [
     {name = "iodine53"},
 ]
-description = "Misskey websocketAPI wrapper."
+description = "Misskey WebsocketAPI wrapper."
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {text = "MIT License"}
 keywords = ["misskey"]
@@ -28,6 +27,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 [project.urls]

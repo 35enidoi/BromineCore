@@ -22,8 +22,6 @@ __all__ = ["Bromine"]
 class Bromine:
     """misskeyのwebsocketAPIを使いやすくしたクラス
 
-    websocketの実装を一々作らなくても簡単にwebsocketの通信ができるようになります
-
     Parameters
     ----------
     instance: str
@@ -81,7 +79,7 @@ class Bromine:
 
     @property
     def cooltime(self) -> int:
-        """websocketの接続が切れた時に再接続まで待つ時間"""
+        """websocketの接続が切れた時に再接続まで待つ時間(秒)"""
         return self.__COOL_TIME
 
     @cooltime.setter
@@ -89,7 +87,7 @@ class Bromine:
         if time > 0:
             self.__COOL_TIME = time
         else:
-            ValueError("負の値です")
+            raise ValueError("負の値です")
 
     @property
     def is_running(self) -> bool:
@@ -100,7 +98,7 @@ class Bromine:
     def expect_info_func(self) -> Callable[[dict[str, Any]], Coroutine[Any, Any, None]] | None:
         """謎の場所からくる情報を受け取る非同期関数
 
-        普通は特に設定しなくてもよい"""
+        絵文字の検出等に使用可能"""
         return self.__expect_info_func
 
     @expect_info_func.setter
@@ -236,12 +234,12 @@ class Bromine:
                      func: Callable[[], Coroutine[Any, Any, None]],
                      block: bool = False,
                      id: Optional[str] = None) -> str:
-        """comebackを作る関数
+        """再接続する際に自動で実行される関数をバインドする関数
 
         Parameters
         ----------
         func: CoroutineFunction
-            comeback時に実行する非同期関数
+            再接続時に実行する非同期関数
         block: bool, default False
             websocketとの交信をブロッキングして実行するか
         id: :obj:`str`, optional
@@ -280,7 +278,7 @@ class Bromine:
         return id
 
     def del_comeback(self, id: str) -> None:
-        """comeback消すやつ
+        """comebackを消すやつ
 
         Parameters
         ----------
@@ -311,7 +309,7 @@ class Bromine:
             self._ws_send(i[0], body)
 
     def _add_ws_reconnect(self, type: str, id: str, body: dict[str, Any]) -> None:
-        """接続しなおした時に再接続(情報を送る)する物を追加する
+        """接続しなおした時に再接続(情報を送る)する情報を追加する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
 
@@ -340,7 +338,7 @@ class Bromine:
         self.__ws_on_comebacks[(type, id)] = body
 
     def _del_ws_reconnect(self, type: str, id: str) -> None:
-        """接続しなおした時に再接続(情報を送る)する物を削除する
+        """接続しなおした時に再接続(情報を送る)する情報を削除する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
 
@@ -361,7 +359,7 @@ class Bromine:
             raise ValueError(ExceptionTexts.TYPE_AND_ID_INVALID)
 
     def _add_ws_type_id(self, type: str, id: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
-        """websocketの情報を振り分ける辞書に追加する
+        """websocketの情報を振り分ける辞書に登録する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
 
@@ -449,7 +447,7 @@ class Bromine:
                    func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]],
                    id: Optional[str] = None,
                    **params: Any) -> str:
-        """channelに接続する関数
+        """チャンネルに接続する関数
 
         Parameters
         ----------
@@ -502,7 +500,7 @@ class Bromine:
         return id
 
     def ws_disconnect(self, id: str) -> None:
-        """チャンネルを接続解除する関数
+        """チャンネルから接続解除する関数
 
         Parameters
         ----------
@@ -528,8 +526,9 @@ class Bromine:
         Parameters
         ----------
         noteid: str
-            キャプチャするノートID
+            キャプチャするノートのID
         func: CoroutineFunction
+            反応があった時に実行される非同期関数
 
         Raises
         ------

@@ -4,6 +4,7 @@ import uuid
 import logging
 from functools import partial
 from typing import Any, Callable, NoReturn, Optional, Union, Coroutine
+from inspect import iscoroutinefunction
 
 import websockets
 
@@ -104,7 +105,7 @@ class Bromine:
 
     @expect_info_func.setter
     def expect_info_func(self, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
-        if not asyncio.iscoroutinefunction(func):
+        if not iscoroutinefunction(func):
             raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
         self.__expect_info_func = func
 
@@ -280,7 +281,7 @@ class Bromine:
         else:
             if id in self.__on_comebacks:
                 raise ValueError(ExceptionTexts.ID_ALREADY_RESERVED)
-        if not asyncio.iscoroutinefunction(func):
+        if not iscoroutinefunction(func):
             raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
 
         self.__on_comebacks[id] = (block, func)
@@ -396,7 +397,7 @@ class Bromine:
         idが`ALLMATCH`の場合、ワイルドカード(type情報に一致する、他の識別idに引っかからなかった情報)になります。
 
         ワイルドカードは、id情報が存在しない場合にも振り分けられます。(emojiAdded等)"""
-        if not asyncio.iscoroutinefunction(func):
+        if not iscoroutinefunction(func):
             # 関数が非同期関数じゃない時
             raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
 

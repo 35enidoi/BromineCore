@@ -15,6 +15,8 @@ INSTANCE = "misskey.io"
 TL = enum.MisskeyChannelNames.LOCAL_TIMELINE
 TL_ARGS = enum.MisskeyChannelArgs.LocalTimeline()
 
+brm = Bromine(instance=INSTANCE)
+
 
 def note_printer(note: dict) -> None:
     """ノートの情報を受け取って描画する関数"""
@@ -67,21 +69,20 @@ def note_printer(note: dict) -> None:
     print("-"*NOBASIBOU_LENGTH)
 
 
+@brm.ws_connect_deco(TL, **TL_ARGS)
 async def note_async(note: dict) -> None:
     note_printer(note["body"])
     print()  # 空白をノート後に入れておく
 
 
-async def main() -> None:
-    brm = Bromine(instance=INSTANCE)
-    brm.ws_connect(TL, note_async, **TL_ARGS)
-    print("start...")
-    await brm.main()
+# デコレータを使わない場合は、下のように書くこともできる
+# brm.ws_connect(TL, note_async, **TL_ARGS)
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        print("start...")
+        asyncio.run(brm.main())
     except KeyboardInterrupt:
         print("fin")
 

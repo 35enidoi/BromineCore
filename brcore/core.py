@@ -566,7 +566,7 @@ class Bromine:
 
         self.__log(f"unsubscribe note. id: {noteid}")
 
-    def ws_connect_deco(self, channel: str):
+    def ws_connect_deco(self, channel: str, id: Optional[str] = None, **params: Any):
         """ws_connectのデコレーター版
 
         Parameters
@@ -581,7 +581,7 @@ class Bromine:
             raise TypeError(ExceptionTexts.DECO_ARG_INVALID)
 
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
-            self.ws_connect(channel=channel, func=func)
+            self.ws_connect(channel=channel, func=func, id=id, **params)
             return func
 
         return _wrap
@@ -602,7 +602,7 @@ class Bromine:
 
         return _wrap
 
-    def add_comeback_deco(self, block: bool = False):
+    def add_comeback_deco(self, block: bool = False, id: Optional[str] = None):
         """add_comebackのデコレーター版
 
         Parameters
@@ -615,7 +615,7 @@ class Bromine:
             raise TypeError(ExceptionTexts.DECO_ARG_INVALID)
 
         def _wrap(func: Callable[[], Coroutine[Any, Any, None]]):
-            self.add_comeback(func=func, block=block)
+            self.add_comeback(func=func, block=block, id=id)
             return func
 
         return _wrap

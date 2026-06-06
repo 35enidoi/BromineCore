@@ -132,8 +132,6 @@ class Bromine:
 
     async def __runner(self, background_tasks: BackgroundTasks) -> NoReturn:
         """websocketとの交信を行うメインdaemon"""
-        # 何回連続で接続に失敗したかのカウンター
-        connect_fail_count = 0
         # この変数たちは最初に接続失敗すると未定義になるから保険のため
         # websocket_daemon(__ws_send_d)
         wsd: Union[None, asyncio.Task] = None
@@ -164,8 +162,6 @@ class Bromine:
                     # 送るdaemonの作成
                     wsd = asyncio.create_task(self.__ws_send_d(ws))
 
-                    # 接続に成功したということでfail_countを0に
-                    connect_fail_count = 0
                     while True:
                         # データ受け取り
                         data = json.loads(await ws.recv())
@@ -187,31 +183,27 @@ class Bromine:
 
             except asyncio.exceptions.TimeoutError as e:
                 # 接続がタイムアウトしたとき
-                self.__log(f"error occured: Timeout {e}")
-                await self.__runner_exception_wait(connect_fail_count)
+                await self.__runner_exception_wait(f"Timeout error: {e}")
 
             except websockets.ConnectionClosed as e:
                 # websocketが勝手に切れたりしたとき
-                self.__log(f"error occured: Websocket Error [{e}]")
-                await self.__runner_exception_wait(connect_fail_count)
+                await self.__runner_exception_wait(f"Websocket closed: {e}")
 
             except websockets.exceptions.InvalidStatus as e:
                 # ステータスコードが変な時
                 status_code = e.response.status_code
-                self.__log(f"error occured: Invalid Status Code [{status_code}]")
                 if status_code // 100 == 4:
                     # 400番台
                     raise e
                 else:
-                    await self.__runner_exception_wait(connect_fail_count)
+                    await self.__runner_exception_wait(f"Invalid status code: {status_code}")
 
             except Exception as e:
                 # 予定外のエラー発生時。
-                self.__log(f"fatal Error: {type(e)}, args: {e.args}")
+                self.__log(f"Fatal Error: {type(e)}, args: {e.args}")
                 raise e
 
             finally:
-                connect_fail_count += 1  # ここが処理されるのは何か例外が起きたときなので
                 # 再接続する際、いろいろ初期化する
                 if isinstance(wsd, asyncio.Task):
                     # __ws_send_dを止める
@@ -235,13 +227,10 @@ class Bromine:
                         pass
                     comebacks = None
 
-    async def __runner_exception_wait(self, fail_count: int) -> None:
+    async def __runner_exception_wait(self, error_message: str) -> None:
+        """__runner内でエラーが起きたときに再接続まで待つやつ"""
+        self.__log(f"Error occured: {error_message}. wait for {self.__COOL_TIME} seconds to reconnect.")
         await asyncio.sleep(self.__COOL_TIME)
-        if fail_count > 5:
-            # Todo: 例外投げるべき？
-            #       死にすぎてる～っていう例外を投げるようにする設定を追加するべき？
-            #       現状30秒寝る
-            await asyncio.sleep(30)
 
     def add_comeback(self,
                      func: Callable[[], Coroutine[Any, Any, None]],
@@ -492,7 +481,7 @@ class Bromine:
         また、idの指定がない場合、uuid4で自動生成されます"""
         if id is None:
             # idがなかったら自動生成
-            id = str(uuid.uuid4())
+            id = uuid.uuid4().hex
 
         body = {
             "channel": channel,

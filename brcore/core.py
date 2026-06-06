@@ -208,11 +208,11 @@ class Bromine:
                     wsd.cancel()
                     try:
                         await wsd
-                    except (
-                        asyncio.CancelledError,
-                        websockets.ConnectionClosed,
-                        websockets.InvalidStatus
-                    ):
+except (
+    asyncio.CancelledError,
+    websockets.ConnectionClosed,
+    websockets.exceptions.InvalidStatus,
+):
                         # とりあえず捻り潰す
                         pass
                     wsd = None

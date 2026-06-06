@@ -62,7 +62,7 @@ def note_printer(note: dict) -> None:
             reactionid = reactionid[:-3] + ":"
         reactions.append(f"({reactionid}, {val})")
     if len(reactions) != 0:
-        print("リアクション達: ", ", ".join(reactions))
+        print("リアクション: ", ", ".join(reactions))
 
     print("-"*NOBASIBOU_LENGTH)
 

@@ -208,11 +208,11 @@ class Bromine:
                     wsd.cancel()
                     try:
                         await wsd
-except (
-    asyncio.CancelledError,
-    websockets.ConnectionClosed,
-    websockets.exceptions.InvalidStatus,
-):
+                    except (
+                        asyncio.CancelledError,
+                        websockets.ConnectionClosed,
+                        websockets.exceptions.InvalidStatus,
+                    ):
                         # とりあえず捻り潰す
                         pass
                     wsd = None
@@ -227,7 +227,7 @@ except (
 
     async def __runner_exception_wait(self, error_message: str) -> None:
         """__runner内でエラーが起きたときに再接続まで待つやつ"""
-self.__log(f"Error occurred: {error_message}. wait for {self.__COOL_TIME} seconds to reconnect.")
+        self.__log(f"Error occurred: {error_message}. wait for {self.__COOL_TIME} seconds to reconnect.")
         await asyncio.sleep(self.__COOL_TIME)
 
     def add_comeback(self,

@@ -26,9 +26,9 @@ class Bromine:
     ----------
     instance: str
         インスタンス名
-    token: :obj:`str`, optional
+    token: `str`, optional
         トークン
-    secure_connect: :obj:`bool`, default True
+    secure_connect: `bool`, default True
         セキュアな接続をするかどうか
 
         これはローカルで構築したインスタンス等セキュアな接続が
@@ -242,7 +242,7 @@ class Bromine:
             再接続時に実行する非同期関数
         block: bool, default False
             websocketとの交信をブロッキングして実行するか
-        id: :obj:`str`, optional
+        id: `str`, optional
             識別id、ない場合自動生成される
 
         Returns
@@ -455,7 +455,7 @@ class Bromine:
             チャンネル名
         func: CoroutineFunction
             反応があった時に実行される非同期関数
-        id: :obj:`str`, optional
+        id: `str`, optional
             識別id、もし指定されていない場合、自動生成される
         **params: Any
             接続する際のパラメーター
@@ -572,7 +572,11 @@ class Bromine:
         Parameters
         ----------
         channel: str
-            チャンネル名"""
+            チャンネル名
+        id: `str`, optional
+            識別id、もし指定されていない場合、自動生成される
+        **params: Any
+            接続する際のパラメーター"""
         if not isinstance(channel, str):
             raise TypeError(ExceptionTexts.DECO_ARG_INVALID)
 
@@ -603,8 +607,10 @@ class Bromine:
 
         Parameters
         ----------
-        block: :obj:`bool`, default False
-            websocketとの交信をブロッキングして実行するか"""
+        block: `bool`, default False
+            websocketとの交信をブロッキングして実行するか
+        id: `str`, optional
+            識別id、もし指定されていない場合、自動生成される"""
         if not isinstance(block, bool):
             raise TypeError(ExceptionTexts.DECO_ARG_INVALID)
 

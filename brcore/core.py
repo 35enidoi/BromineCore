@@ -3,7 +3,7 @@ import asyncio
 import uuid
 import logging
 from functools import partial
-from typing import Any, Callable, NoReturn, Optional, Union, Coroutine
+from typing import Any, Callable, NoReturn, Optional, Coroutine
 from inspect import iscoroutinefunction
 
 import websockets
@@ -97,7 +97,7 @@ class Bromine:
         return self.__is_running
 
     @property
-    def expect_info_func(self) -> Union[Callable[[dict[str, Any]], Coroutine[Any, Any, None]], None]:
+    def expect_info_func(self) -> Callable[[dict[str, Any]], Coroutine[Any, Any, None]] | None:
         """謎の場所からくる情報を受け取る非同期関数
 
         普通は特に設定しなくてもよい"""
@@ -134,9 +134,9 @@ class Bromine:
         """websocketとの交信を行うメインdaemon"""
         # この変数たちは最初に接続失敗すると未定義になるから保険のため
         # websocket_daemon(__ws_send_d)
-        wsd: Union[None, asyncio.Task] = None
+        wsd: None | asyncio.Task = None
         # comebacks(asyncio.gather)
-        comebacks: Union[None, asyncio.Future] = None
+        comebacks: None | asyncio.Future = None
 
         while True:
             try:

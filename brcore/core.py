@@ -3,7 +3,8 @@ import asyncio
 import uuid
 import logging
 from functools import partial
-from typing import Any, Callable, NoReturn, Optional, Union, Coroutine
+from typing import Any, Callable, NoReturn, Optional, Coroutine
+from inspect import iscoroutinefunction
 
 import websockets
 
@@ -21,15 +22,13 @@ __all__ = ["Bromine"]
 class Bromine:
     """misskeyのwebsocketAPIを使いやすくしたクラス
 
-    websocketの実装を一々作らなくても簡単にwebsocketの通信ができるようになります
-
     Parameters
     ----------
     instance: str
         インスタンス名
-    token: :obj:`str`, optional
+    token: `str`, optional
         トークン
-    secure_connect: :obj:`bool`, default True
+    secure_connect: `bool`, default True
         セキュアな接続をするかどうか
 
         これはローカルで構築したインスタンス等セキュアな接続が
@@ -80,7 +79,7 @@ class Bromine:
 
     @property
     def cooltime(self) -> int:
-        """websocketの接続が切れた時に再接続まで待つ時間"""
+        """websocketの接続が切れた時に再接続まで待つ時間(秒)"""
         return self.__COOL_TIME
 
     @cooltime.setter
@@ -88,7 +87,7 @@ class Bromine:
         if time > 0:
             self.__COOL_TIME = time
         else:
-            ValueError("負の値です")
+            raise ValueError("負の値です")
 
     @property
     def is_running(self) -> bool:
@@ -96,15 +95,15 @@ class Bromine:
         return self.__is_running
 
     @property
-    def expect_info_func(self) -> Union[Callable[[dict[str, Any]], Coroutine[Any, Any, None]], None]:
+    def expect_info_func(self) -> Callable[[dict[str, Any]], Coroutine[Any, Any, None]] | None:
         """謎の場所からくる情報を受け取る非同期関数
 
-        普通は特に設定しなくてもよい"""
+        絵文字の検出等に使用可能"""
         return self.__expect_info_func
 
     @expect_info_func.setter
     def expect_info_func(self, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
-        if not asyncio.iscoroutinefunction(func):
+        if not iscoroutinefunction(func):
             raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
         self.__expect_info_func = func
 
@@ -131,13 +130,11 @@ class Bromine:
 
     async def __runner(self, background_tasks: BackgroundTasks) -> NoReturn:
         """websocketとの交信を行うメインdaemon"""
-        # 何回連続で接続に失敗したかのカウンター
-        connect_fail_count = 0
         # この変数たちは最初に接続失敗すると未定義になるから保険のため
         # websocket_daemon(__ws_send_d)
-        wsd: Union[None, asyncio.Task] = None
+        wsd: None | asyncio.Task = None
         # comebacks(asyncio.gather)
-        comebacks: Union[None, asyncio.Future] = None
+        comebacks: None | asyncio.Future = None
 
         while True:
             try:
@@ -163,8 +160,6 @@ class Bromine:
                     # 送るdaemonの作成
                     wsd = asyncio.create_task(self.__ws_send_d(ws))
 
-                    # 接続に成功したということでfail_countを0に
-                    connect_fail_count = 0
                     while True:
                         # データ受け取り
                         data = json.loads(await ws.recv())
@@ -186,38 +181,39 @@ class Bromine:
 
             except asyncio.exceptions.TimeoutError as e:
                 # 接続がタイムアウトしたとき
-                self.__log(f"error occured: Timeout {e}")
-                await self.__runner_exception_wait(connect_fail_count)
+                await self.__runner_exception_wait(f"Timeout error: {e}")
 
             except websockets.ConnectionClosed as e:
                 # websocketが勝手に切れたりしたとき
-                self.__log(f"error occured: Websocket Error [{e}]")
-                await self.__runner_exception_wait(connect_fail_count)
+                await self.__runner_exception_wait(f"Websocket closed: {e}")
 
             except websockets.exceptions.InvalidStatus as e:
                 # ステータスコードが変な時
                 status_code = e.response.status_code
-                self.__log(f"error occured: Invalid Status Code [{status_code}]")
                 if status_code // 100 == 4:
                     # 400番台
                     raise e
                 else:
-                    await self.__runner_exception_wait(connect_fail_count)
+                    await self.__runner_exception_wait(f"Invalid status code: {status_code}")
 
             except Exception as e:
                 # 予定外のエラー発生時。
-                self.__log(f"fatal Error: {type(e)}, args: {e.args}")
+                self.__log(f"Fatal Error: {type(e)}, args: {e.args}")
                 raise e
 
             finally:
-                connect_fail_count += 1  # ここが処理されるのは何か例外が起きたときなので
                 # 再接続する際、いろいろ初期化する
                 if isinstance(wsd, asyncio.Task):
                     # __ws_send_dを止める
                     wsd.cancel()
                     try:
                         await wsd
-                    except asyncio.CancelledError:
+                    except (
+                        asyncio.CancelledError,
+                        websockets.ConnectionClosed,
+                        websockets.exceptions.InvalidStatus,
+                    ):
+                        # とりあえず捻り潰す
                         pass
                     wsd = None
                 if comebacks is not None:
@@ -229,27 +225,24 @@ class Bromine:
                         pass
                     comebacks = None
 
-    async def __runner_exception_wait(self, fail_count: int) -> None:
+    async def __runner_exception_wait(self, error_message: str) -> None:
+        """__runner内でエラーが起きたときに再接続まで待つやつ"""
+        self.__log(f"Error occurred: {error_message}. wait for {self.__COOL_TIME} seconds to reconnect.")
         await asyncio.sleep(self.__COOL_TIME)
-        if fail_count > 5:
-            # Todo: 例外投げるべき？
-            #       死にすぎてる～っていう例外を投げるようにする設定を追加するべき？
-            #       現状30秒寝る
-            await asyncio.sleep(30)
 
     def add_comeback(self,
                      func: Callable[[], Coroutine[Any, Any, None]],
                      block: bool = False,
                      id: Optional[str] = None) -> str:
-        """comebackを作る関数
+        """再接続する際に自動で実行される関数をバインドする関数
 
         Parameters
         ----------
         func: CoroutineFunction
-            comeback時に実行する非同期関数
+            再接続時に実行する非同期関数
         block: bool, default False
             websocketとの交信をブロッキングして実行するか
-        id: :obj:`str`, optional
+        id: `str`, optional
             識別id、ない場合自動生成される
 
         Returns
@@ -275,7 +268,7 @@ class Bromine:
         else:
             if id in self.__on_comebacks:
                 raise ValueError(ExceptionTexts.ID_ALREADY_RESERVED)
-        if not asyncio.iscoroutinefunction(func):
+        if not iscoroutinefunction(func):
             raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
 
         self.__on_comebacks[id] = (block, func)
@@ -285,7 +278,7 @@ class Bromine:
         return id
 
     def del_comeback(self, id: str) -> None:
-        """comeback消すやつ
+        """comebackを消すやつ
 
         Parameters
         ----------
@@ -316,7 +309,7 @@ class Bromine:
             self._ws_send(i[0], body)
 
     def _add_ws_reconnect(self, type: str, id: str, body: dict[str, Any]) -> None:
-        """接続しなおした時に再接続(情報を送る)する物を追加する
+        """接続しなおした時に再接続(情報を送る)する情報を追加する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
 
@@ -345,7 +338,7 @@ class Bromine:
         self.__ws_on_comebacks[(type, id)] = body
 
     def _del_ws_reconnect(self, type: str, id: str) -> None:
-        """接続しなおした時に再接続(情報を送る)する物を削除する
+        """接続しなおした時に再接続(情報を送る)する情報を削除する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
 
@@ -366,7 +359,7 @@ class Bromine:
             raise ValueError(ExceptionTexts.TYPE_AND_ID_INVALID)
 
     def _add_ws_type_id(self, type: str, id: str, func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
-        """websocketの情報を振り分ける辞書に追加する
+        """websocketの情報を振り分ける辞書に登録する
 
         これは低レベルAPIなので普通は触らなくても大丈夫です。
 
@@ -391,7 +384,7 @@ class Bromine:
         idが`ALLMATCH`の場合、ワイルドカード(type情報に一致する、他の識別idに引っかからなかった情報)になります。
 
         ワイルドカードは、id情報が存在しない場合にも振り分けられます。(emojiAdded等)"""
-        if not asyncio.iscoroutinefunction(func):
+        if not iscoroutinefunction(func):
             # 関数が非同期関数じゃない時
             raise TypeError(ExceptionTexts.FUNCTION_NOT_COROUTINEFUNC)
 
@@ -454,7 +447,7 @@ class Bromine:
                    func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]],
                    id: Optional[str] = None,
                    **params: Any) -> str:
-        """channelに接続する関数
+        """チャンネルに接続する関数
 
         Parameters
         ----------
@@ -462,7 +455,7 @@ class Bromine:
             チャンネル名
         func: CoroutineFunction
             反応があった時に実行される非同期関数
-        id: :obj:`str`, optional
+        id: `str`, optional
             識別id、もし指定されていない場合、自動生成される
         **params: Any
             接続する際のパラメーター
@@ -486,7 +479,7 @@ class Bromine:
         また、idの指定がない場合、uuid4で自動生成されます"""
         if id is None:
             # idがなかったら自動生成
-            id = str(uuid.uuid4())
+            id = uuid.uuid4().hex
 
         body = {
             "channel": channel,
@@ -507,7 +500,7 @@ class Bromine:
         return id
 
     def ws_disconnect(self, id: str) -> None:
-        """チャンネルを接続解除する関数
+        """チャンネルから接続解除する関数
 
         Parameters
         ----------
@@ -533,8 +526,9 @@ class Bromine:
         Parameters
         ----------
         noteid: str
-            キャプチャするノートID
+            キャプチャするノートのID
         func: CoroutineFunction
+            反応があった時に実行される非同期関数
 
         Raises
         ------
@@ -572,18 +566,22 @@ class Bromine:
 
         self.__log(f"unsubscribe note. id: {noteid}")
 
-    def ws_connect_deco(self, channel: str):
+    def ws_connect_deco(self, channel: str, id: Optional[str] = None, **params: Any):
         """ws_connectのデコレーター版
 
         Parameters
         ----------
         channel: str
-            チャンネル名"""
+            チャンネル名
+        id: `str`, optional
+            識別id、もし指定されていない場合、自動生成される
+        **params: Any
+            接続する際のパラメーター"""
         if not isinstance(channel, str):
             raise TypeError(ExceptionTexts.DECO_ARG_INVALID)
 
         def _wrap(func: Callable[[dict[str, Any]], Coroutine[Any, Any, None]]):
-            self.ws_connect(channel=channel, func=func)
+            self.ws_connect(channel=channel, func=func, id=id, **params)
             return func
 
         return _wrap
@@ -604,18 +602,20 @@ class Bromine:
 
         return _wrap
 
-    def add_comeback_deco(self, block: bool = False):
+    def add_comeback_deco(self, block: bool = False, id: Optional[str] = None):
         """add_comebackのデコレーター版
 
         Parameters
         ----------
-        block: :obj:`bool`, default False
-            websocketとの交信をブロッキングして実行するか"""
+        block: `bool`, default False
+            websocketとの交信をブロッキングして実行するか
+        id: `str`, optional
+            識別id、もし指定されていない場合、自動生成される"""
         if not isinstance(block, bool):
             raise TypeError(ExceptionTexts.DECO_ARG_INVALID)
 
         def _wrap(func: Callable[[], Coroutine[Any, Any, None]]):
-            self.add_comeback(func=func, block=block)
+            self.add_comeback(func=func, block=block, id=id)
             return func
 
         return _wrap
